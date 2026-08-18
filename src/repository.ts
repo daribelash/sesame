@@ -9,12 +9,16 @@ export interface Gate {
   name: string
   code: string
   notes: string
+  lat: number | null
+  lng: number | null
+  accuracy: number | null
   createdAt: string
   updatedAt: string
   deletedAt: string | null
 }
 
-export type NewGateInput = Pick<Gate, 'name' | 'code' | 'notes'>
+export type NewGateInput = Pick<Gate, 'name' | 'code' | 'notes'> &
+  Partial<Pick<Gate, 'lat' | 'lng' | 'accuracy'>>
 export type GateUpdateInput = Partial<Pick<Gate, 'name' | 'code' | 'notes'>>
 
 function readAll(): Gate[] {
@@ -40,6 +44,9 @@ export function createGate(input: NewGateInput): Gate {
     name: input.name,
     code: input.code,
     notes: input.notes,
+    lat: input.lat ?? null,
+    lng: input.lng ?? null,
+    accuracy: input.accuracy ?? null,
     createdAt: now,
     updatedAt: now,
     deletedAt: null,
