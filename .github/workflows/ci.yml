@@ -1,8 +1,7 @@
 name: ci
 
-# Sprint 1 shape: typecheck, lint, unit and component tests.
+# Sprint 3 shape: typecheck, lint, unit/component tests, and e2e.
 # This file grows with the project rather than being retrofitted:
-#   sprint 3 — add the e2e job below
 #   sprint 5 — add the postgres service to an integration job
 on:
   push:
@@ -33,18 +32,16 @@ jobs:
       - name: build
         run: npm run build
 
-# --- added in sprint 3 -------------------------------------------------------
-#
-#  e2e:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v4
-#      - uses: actions/setup-node@v4
-#        with: { node-version: 22, cache: npm }
-#      - run: npm ci
-#      - run: npx playwright install --with-deps chromium
-#      - run: npm run test:e2e
-#
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+
 # --- added in sprint 5 -------------------------------------------------------
 #
 #  integration:
