@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { createGate, deleteGate, listGates, updateGate } from './repository'
+import { createGate, deleteGate, exportGates, importGates, listGates, updateGate } from './repository'
 
 beforeEach(() => {
   localStorage.clear()
@@ -92,5 +92,53 @@ describe('deleteGate', () => {
 
   it('is a no-op for an id that does not exist', () => {
     expect(() => deleteGate('missing-id')).not.toThrow()
+  })
+})
+
+describe('exportGates/importGates', () => {
+  it('round-trips all gates, including soft-deleted tombstones, without data loss', () => {
+    const active = createGate({
+      name: 'Oakwood Estates',
+      code: '0451#',
+      notes: '',
+      lat: 32.1,
+      lng: -96.1,
+      accuracy: 10,
+    })
+    const toDelete = createGate({ name: 'Old Gate', code: '9999', notes: '' })
+    deleteGate(toDelete.id)
+
+    const exported = exportGates()
+    expect(exported).toHaveLength(2)
+
+    localStorage.clear()
+    expect(listGates()).toEqual([])
+
+    importGates(exported)
+
+    expect(listGates()).toEqual([active])
+    expect(exportGates()).toEqual(exported)
+  })
+
+  it('replaces the existing store rather than merging into it', () => {
+    createGate({ name: 'Will be replaced', code: '0000', notes: '' })
+    const incoming = [
+      {
+        id: 'imported-1',
+        name: 'From backup',
+        code: '1111',
+        notes: '',
+        lat: null,
+        lng: null,
+        accuracy: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        deletedAt: null,
+      },
+    ]
+
+    importGates(incoming)
+
+    expect(listGates()).toEqual(incoming)
   })
 })

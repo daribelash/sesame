@@ -79,3 +79,17 @@ export function deleteGate(id: string): void {
   gates[index] = { ...gates[index], deletedAt: now, updatedAt: now }
   writeAll(gates)
 }
+
+/** Every gate, including soft-deleted tombstones, for backup. */
+export function exportGates(): Gate[] {
+  return readAll()
+}
+
+/**
+ * Restores from a backup, replacing the local store outright. There is no
+ * sync yet, so there is no other copy to reconcile against — this is a
+ * restore operation, not a merge.
+ */
+export function importGates(gates: Gate[]): void {
+  writeAll(gates)
+}
