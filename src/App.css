@@ -82,6 +82,13 @@ button:hover {
   margin: 0 0 8px;
 }
 
+.gate .distance {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
 .gate .location {
   margin: 0 0 8px;
   font-size: 13px;
@@ -91,4 +98,33 @@ button:hover {
 .gate .updated {
   margin: 0;
   font-size: 13px;
+}
+
+.radius-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.radius-filter select {
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.data-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.data-tools label {
+  cursor: pointer;
 }
