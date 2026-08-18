@@ -82,6 +82,12 @@ button:hover {
   margin: 0 0 8px;
 }
 
+.gate .location {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text);
+}
+
 .gate .updated {
   margin: 0;
   font-size: 13px;

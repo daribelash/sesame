@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import type { NewGateInput } from './repository'
+import { getCurrentFix } from './geolocation'
 
 interface GateFormProps {
   onAdd: (input: NewGateInput) => void
@@ -10,11 +11,21 @@ export function GateForm({ onAdd }: GateFormProps) {
   const [code, setCode] = useState('')
   const [notes, setNotes] = useState('')
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!name.trim() || !code.trim()) return
 
-    onAdd({ name: name.trim(), code: code.trim(), notes: notes.trim() })
+    const result = await getCurrentFix()
+    const fix = result.status === 'success' ? result.fix : null
+
+    onAdd({
+      name: name.trim(),
+      code: code.trim(),
+      notes: notes.trim(),
+      lat: fix?.lat ?? null,
+      lng: fix?.lng ?? null,
+      accuracy: fix?.accuracy ?? null,
+    })
     setName('')
     setCode('')
     setNotes('')
