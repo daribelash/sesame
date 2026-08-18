@@ -1,7 +1,7 @@
-import type { Gate } from './repository'
+import type { GateWithDistance } from './gateSort'
 
 interface GateListProps {
-  gates: Gate[]
+  gates: GateWithDistance[]
 }
 
 export function GateList({ gates }: GateListProps) {
@@ -16,6 +16,9 @@ export function GateList({ gates }: GateListProps) {
           <h2>{gate.name}</h2>
           <p className="code">{gate.code}</p>
           {gate.notes && <p className="notes">{gate.notes}</p>}
+          {gate.distanceMiles !== null && (
+            <p className="distance">{gate.distanceMiles.toFixed(1)} mi away</p>
+          )}
           {gate.lat != null && gate.lng != null ? (
             <p className="location">
               {gate.lat.toFixed(5)}, {gate.lng.toFixed(5)}
