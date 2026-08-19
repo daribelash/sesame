@@ -59,6 +59,7 @@ function makeClientGate(overrides: Partial<Record<string, unknown>> = {}) {
     createdAt: now,
     updatedAt: now,
     deletedAt: null,
+    codeHistory: [],
     ...overrides,
   }
 }
@@ -97,6 +98,34 @@ describe('POST /api/gates then GET /api/gates', () => {
 
     const pullResponse = await app.inject({ method: 'GET', url: '/api/gates', headers: { cookie } })
     expect(pullResponse.json()).toEqual([gate])
+  })
+
+  it('retains superseded codes rather than overwriting them', async () => {
+    const app = buildApp(client)
+    const { cookie } = await registerAndGetCookie(app, 'driver@example.com')
+    const gate = makeClientGate({ code: '0451#' })
+
+    await app.inject({ method: 'POST', url: '/api/gates', headers: { cookie }, payload: [gate] })
+
+    const withHistory = {
+      ...gate,
+      code: '9999',
+      updatedAt: new Date(Date.now() + 1000).toISOString(),
+      codeHistory: [
+        { id: randomUUID(), code: '0451#', supersededAt: new Date(Date.now() + 1000).toISOString() },
+      ],
+    }
+    await app.inject({
+      method: 'POST',
+      url: '/api/gates',
+      headers: { cookie },
+      payload: [withHistory],
+    })
+
+    const pullResponse = await app.inject({ method: 'GET', url: '/api/gates', headers: { cookie } })
+    const [pulled] = pullResponse.json() as { code: string; codeHistory: { code: string }[] }[]
+    expect(pulled.code).toBe('9999')
+    expect(pulled.codeHistory.map((entry) => entry.code)).toEqual(['0451#'])
   })
 
   it('upserts on a second push with the same id', async () => {

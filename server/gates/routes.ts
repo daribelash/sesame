@@ -2,6 +2,12 @@ import type { FastifyInstance } from 'fastify'
 import { requireAuth } from '../auth/middleware.js'
 import type { Queryable } from '../db.js'
 
+interface ClientCodeHistoryEntry {
+  id: string
+  code: string
+  supersededAt: string
+}
+
 interface ClientGate {
   id: string
   name: string
@@ -13,6 +19,7 @@ interface ClientGate {
   createdAt: string
   updatedAt: string
   deletedAt: string | null
+  codeHistory: ClientCodeHistoryEntry[]
 }
 
 interface GateRow {
@@ -28,7 +35,14 @@ interface GateRow {
   deleted_at: Date | null
 }
 
-function toClientGate(row: GateRow): ClientGate {
+interface CodeHistoryRow {
+  id: string
+  gate_id: string
+  code: string
+  superseded_at: Date
+}
+
+function toClientGate(row: GateRow, codeHistory: ClientCodeHistoryEntry[]): ClientGate {
   return {
     id: row.id,
     name: row.name,
@@ -40,6 +54,7 @@ function toClientGate(row: GateRow): ClientGate {
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
     deletedAt: row.deleted_at ? row.deleted_at.toISOString() : null,
+    codeHistory,
   }
 }
 
@@ -47,12 +62,40 @@ export function registerGateRoutes(app: FastifyInstance, db: Queryable): void {
   const auth = requireAuth(db)
 
   app.get('/api/gates', { preHandler: auth }, async (request) => {
-    const { rows } = await db.query<GateRow>(
-      `select id, name, code, notes, lat, lng, accuracy, created_at, updated_at, deleted_at
-       from gates where user_id = $1`,
-      [request.user!.id],
-    )
-    return rows.map(toClientGate)
+    const userId = request.user!.id
+
+    const [gates, history] = await Promise.all([
+      db.query<GateRow>(
+        `select id, name, code, notes, lat, lng, accuracy, created_at, updated_at, deleted_at
+         from gates where user_id = $1`,
+        [userId],
+      ),
+      db.query<CodeHistoryRow>(
+        `select code_history.id, code_history.gate_id, code_history.code, code_history.superseded_at
+         from code_history
+         join gates on gates.id = code_history.gate_id
+         where gates.user_id = $1
+         order by code_history.superseded_at desc`,
+        [userId],
+      ),
+    ])
+
+    const historyByGate = new Map<string, ClientCodeHistoryEntry[]>()
+    for (const row of history.rows) {
+      const entry: ClientCodeHistoryEntry = {
+        id: row.id,
+        code: row.code,
+        supersededAt: row.superseded_at.toISOString(),
+      }
+      const existing = historyByGate.get(row.gate_id)
+      if (existing) {
+        existing.push(entry)
+      } else {
+        historyByGate.set(row.gate_id, [entry])
+      }
+    }
+
+    return gates.rows.map((row) => toClientGate(row, historyByGate.get(row.id) ?? []))
   })
 
   app.post<{ Body: ClientGate[] }>('/api/gates', { preHandler: auth }, async (request, reply) => {
@@ -94,6 +137,19 @@ export function registerGateRoutes(app: FastifyInstance, db: Queryable): void {
           gate.deletedAt,
         ],
       )
+
+      for (const entry of gate.codeHistory) {
+        // History is append-only and immutable — ON CONFLICT DO NOTHING is
+        // enough, and the EXISTS guard mirrors the gate upsert's ownership
+        // check so a foreign gate id can't be used to attach history to it.
+        await db.query(
+          `insert into code_history (id, gate_id, code, superseded_at)
+           select $1, $2, $3, $4
+           where exists (select 1 from gates where gates.id = $2 and gates.user_id = $5)
+           on conflict (id) do nothing`,
+          [entry.id, gate.id, entry.code, entry.supersededAt, userId],
+        )
+      }
     }
 
     reply.code(200).send({ ok: true })
