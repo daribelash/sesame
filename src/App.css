@@ -161,3 +161,13 @@ button:hover {
   justify-content: space-between;
   gap: 12px;
 }
+
+.sync-status {
+  font-size: 13px;
+  color: var(--text);
+  margin: -12px 0 24px;
+}
+
+.sync-status--error {
+  color: #dc2626;
+}

@@ -30,9 +30,14 @@ function mockFetchRouter(handlers: Record<string, { status: number; body: unknow
 }
 
 /** Most tests care about gate behaviour, not the auth flow itself — this
- * mocks the common case of an already-logged-in returning user. */
-function mockLoggedIn() {
-  mockFetchRouter({ 'GET /api/me': { status: 200, body: testUser } })
+ * mocks the common case of an already-logged-in returning user, with an
+ * empty remote gate list unless overridden. */
+function mockLoggedIn(remoteGates: unknown[] = []) {
+  return mockFetchRouter({
+    'GET /api/me': { status: 200, body: testUser },
+    'GET /api/gates': { status: 200, body: remoteGates },
+    'POST /api/gates': { status: 200, body: { ok: true } },
+  })
 }
 
 beforeEach(() => {
@@ -206,5 +211,49 @@ describe('App', () => {
 
     expect(screen.queryByLabelText('Email')).not.toBeInTheDocument()
     expect(screen.getByText('Log in to see your saved gates.')).toBeInTheDocument()
+  })
+
+  it('pulls gates from the server on login, restoring what local storage lost', async () => {
+    const remoteGate = {
+      id: 'remote-1',
+      name: 'Riverbend',
+      code: '7788',
+      notes: '',
+      lat: null,
+      lng: null,
+      accuracy: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      deletedAt: null,
+    }
+    mockLoggedIn([remoteGate])
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: 'Riverbend' })).toBeInTheDocument()
+  })
+
+  it('shows a quiet status while syncing, and an error note when it fails', async () => {
+    mockLoggedIn()
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.type(await screen.findByLabelText('Gate name'), 'Oakwood Estates')
+    await user.type(screen.getByLabelText('Code'), '0451#')
+    await user.click(screen.getByRole('button', { name: 'Save gate' }))
+
+    // The add re-triggers a sync; it resolves against the same mock, so the
+    // app settles back to no visible status rather than staying stuck.
+    await screen.findByRole('heading', { name: 'Oakwood Estates' })
+    expect(screen.queryByText('Syncing…')).not.toBeInTheDocument()
+    expect(screen.queryByText('Sync paused — check your connection.')).not.toBeInTheDocument()
+
+    mockFetchRouter({
+      'GET /api/me': { status: 200, body: testUser },
+      'GET /api/gates': { status: 500, body: {} },
+    })
+    window.dispatchEvent(new Event('online'))
+
+    expect(await screen.findByText('Sync paused — check your connection.')).toBeInTheDocument()
   })
 })
