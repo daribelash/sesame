@@ -11,7 +11,9 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'npm run dev -- --port 4173 --strictPort',
+    // Production build: the service worker that makes offline work only
+    // exists once built, not under the plain vite dev server.
+    command: 'npm run build && npm run preview -- --port 4173 --strictPort',
     url: 'http://localhost:4173',
     reuseExistingServer: !process.env.CI,
   },
