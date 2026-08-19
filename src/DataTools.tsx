@@ -1,13 +1,14 @@
 import type { ChangeEvent } from 'react'
-import { exportGates, importGates, type Gate } from './repository'
+import type { Gate, GateRepository } from './repository'
 
 interface DataToolsProps {
+  repo: GateRepository
   onImport: () => void
 }
 
-export function DataTools({ onImport }: DataToolsProps) {
+export function DataTools({ repo, onImport }: DataToolsProps) {
   function handleExport() {
-    const data = exportGates()
+    const data = repo.exportGates()
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
 
@@ -26,7 +27,7 @@ export function DataTools({ onImport }: DataToolsProps) {
 
     try {
       const data = JSON.parse(await file.text()) as Gate[]
-      importGates(data)
+      repo.importGates(data)
       onImport()
     } catch {
       window.alert('That file is not a valid Sesame export.')

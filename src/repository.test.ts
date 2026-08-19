@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { createGate, deleteGate, exportGates, importGates, listGates, updateGate } from './repository'
+import { createGateRepository } from './repository'
+
+const userId = 'user-1'
 
 beforeEach(() => {
   localStorage.clear()
@@ -7,7 +9,8 @@ beforeEach(() => {
 
 describe('createGate', () => {
   it('persists a gate with a generated id and timestamps', () => {
-    const gate = createGate({ name: 'Oakwood Estates', code: '0451#', notes: 'main gate' })
+    const repo = createGateRepository(userId)
+    const gate = repo.createGate({ name: 'Oakwood Estates', code: '0451#', notes: 'main gate' })
 
     expect(gate.id).toBeTruthy()
     expect(gate.name).toBe('Oakwood Estates')
@@ -16,11 +19,12 @@ describe('createGate', () => {
     expect(gate.deletedAt).toBeNull()
     expect(gate.createdAt).toBe(gate.updatedAt)
 
-    expect(listGates()).toEqual([gate])
+    expect(repo.listGates()).toEqual([gate])
   })
 
   it('stores the GPS fix when one is provided', () => {
-    const gate = createGate({
+    const repo = createGateRepository(userId)
+    const gate = repo.createGate({
       name: 'Oakwood Estates',
       code: '0451#',
       notes: '',
@@ -35,7 +39,8 @@ describe('createGate', () => {
   })
 
   it('defaults lat, lng, and accuracy to null when no fix is provided', () => {
-    const gate = createGate({ name: 'Oakwood Estates', code: '0451#', notes: '' })
+    const repo = createGateRepository(userId)
+    const gate = repo.createGate({ name: 'Oakwood Estates', code: '0451#', notes: '' })
 
     expect(gate.lat).toBeNull()
     expect(gate.lng).toBeNull()
@@ -43,8 +48,9 @@ describe('createGate', () => {
   })
 
   it('gives each gate a distinct id', () => {
-    const first = createGate({ name: 'Gate A', code: '1111', notes: '' })
-    const second = createGate({ name: 'Gate B', code: '2222', notes: '' })
+    const repo = createGateRepository(userId)
+    const first = repo.createGate({ name: 'Gate A', code: '1111', notes: '' })
+    const second = repo.createGate({ name: 'Gate B', code: '2222', notes: '' })
 
     expect(first.id).not.toBe(second.id)
   })
@@ -52,52 +58,55 @@ describe('createGate', () => {
 
 describe('listGates', () => {
   it('returns an empty list when nothing has been saved', () => {
-    expect(listGates()).toEqual([])
+    expect(createGateRepository(userId).listGates()).toEqual([])
   })
 
   it('survives a reload by reading from localStorage', () => {
-    createGate({ name: 'Oakwood Estates', code: '0451#', notes: '' })
+    createGateRepository(userId).createGate({ name: 'Oakwood Estates', code: '0451#', notes: '' })
 
     // A "reload" is just a fresh read from the same backing store.
-    expect(listGates()).toHaveLength(1)
+    expect(createGateRepository(userId).listGates()).toHaveLength(1)
   })
 })
 
 describe('updateGate', () => {
   it('applies changes and bumps updatedAt', async () => {
-    const gate = createGate({ name: 'Oakwood Estates', code: '0451', notes: '' })
+    const repo = createGateRepository(userId)
+    const gate = repo.createGate({ name: 'Oakwood Estates', code: '0451', notes: '' })
 
     await new Promise((resolve) => setTimeout(resolve, 2))
-    const updated = updateGate(gate.id, { code: '0452' })
+    const updated = repo.updateGate(gate.id, { code: '0452' })
 
     expect(updated?.code).toBe('0452')
     expect(updated?.name).toBe('Oakwood Estates')
     expect(updated?.updatedAt).not.toBe(gate.updatedAt)
-    expect(listGates()[0].code).toBe('0452')
+    expect(repo.listGates()[0].code).toBe('0452')
   })
 
   it('returns undefined for an id that does not exist', () => {
-    expect(updateGate('missing-id', { code: '9999' })).toBeUndefined()
+    expect(createGateRepository(userId).updateGate('missing-id', { code: '9999' })).toBeUndefined()
   })
 })
 
 describe('deleteGate', () => {
   it('soft-deletes a gate so it stops appearing in reads', () => {
-    const gate = createGate({ name: 'Oakwood Estates', code: '0451', notes: '' })
+    const repo = createGateRepository(userId)
+    const gate = repo.createGate({ name: 'Oakwood Estates', code: '0451', notes: '' })
 
-    deleteGate(gate.id)
+    repo.deleteGate(gate.id)
 
-    expect(listGates()).toEqual([])
+    expect(repo.listGates()).toEqual([])
   })
 
   it('is a no-op for an id that does not exist', () => {
-    expect(() => deleteGate('missing-id')).not.toThrow()
+    expect(() => createGateRepository(userId).deleteGate('missing-id')).not.toThrow()
   })
 })
 
 describe('exportGates/importGates', () => {
   it('round-trips all gates, including soft-deleted tombstones, without data loss', () => {
-    const active = createGate({
+    const repo = createGateRepository(userId)
+    const active = repo.createGate({
       name: 'Oakwood Estates',
       code: '0451#',
       notes: '',
@@ -105,23 +114,24 @@ describe('exportGates/importGates', () => {
       lng: -96.1,
       accuracy: 10,
     })
-    const toDelete = createGate({ name: 'Old Gate', code: '9999', notes: '' })
-    deleteGate(toDelete.id)
+    const toDelete = repo.createGate({ name: 'Old Gate', code: '9999', notes: '' })
+    repo.deleteGate(toDelete.id)
 
-    const exported = exportGates()
+    const exported = repo.exportGates()
     expect(exported).toHaveLength(2)
 
     localStorage.clear()
-    expect(listGates()).toEqual([])
+    expect(repo.listGates()).toEqual([])
 
-    importGates(exported)
+    repo.importGates(exported)
 
-    expect(listGates()).toEqual([active])
-    expect(exportGates()).toEqual(exported)
+    expect(repo.listGates()).toEqual([active])
+    expect(repo.exportGates()).toEqual(exported)
   })
 
   it('replaces the existing store rather than merging into it', () => {
-    createGate({ name: 'Will be replaced', code: '0000', notes: '' })
+    const repo = createGateRepository(userId)
+    repo.createGate({ name: 'Will be replaced', code: '0000', notes: '' })
     const incoming = [
       {
         id: 'imported-1',
@@ -137,8 +147,20 @@ describe('exportGates/importGates', () => {
       },
     ]
 
-    importGates(incoming)
+    repo.importGates(incoming)
 
-    expect(listGates()).toEqual(incoming)
+    expect(repo.listGates()).toEqual(incoming)
+  })
+})
+
+describe('per-user isolation', () => {
+  it('never shows one account gates to another', () => {
+    const repoA = createGateRepository('user-a')
+    const repoB = createGateRepository('user-b')
+
+    repoA.createGate({ name: "A's gate", code: '1111', notes: '' })
+
+    expect(repoA.listGates()).toHaveLength(1)
+    expect(repoB.listGates()).toEqual([])
   })
 })
