@@ -5,6 +5,7 @@ import fastifyStatic from '@fastify/static'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { registerAuthRoutes } from './auth/routes.js'
 import type { Queryable } from './db.js'
+import { registerGateRoutes } from './gates/routes.js'
 
 const DIST_DIR = path.join(import.meta.dirname, '..', 'dist')
 
@@ -20,6 +21,7 @@ export function buildApp(db: Queryable): FastifyInstance {
 
   app.register(fastifyCookie)
   registerAuthRoutes(app, db)
+  registerGateRoutes(app, db)
 
   app.get('/health', async () => {
     const { rows } = await db.query<TableCounts>(`
