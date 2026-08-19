@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { syncGates } from './sync'
+import { syncAddresses, syncGates } from './sync'
 import type { Gate, GateRepository } from './repository'
+import type { Address, AddressRepository } from './addressRepository'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -16,6 +17,7 @@ function makeGate(overrides: Partial<Gate> & { id: string; updatedAt: string }):
     accuracy: null,
     createdAt: overrides.updatedAt,
     deletedAt: null,
+    codeHistory: [],
     ...overrides,
   }
 }
@@ -84,5 +86,62 @@ describe('syncGates', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(syncGates(repo)).rejects.toThrow('Failed to push gates to the server')
+  })
+})
+
+function makeAddress(overrides: Partial<Address> & { id: string; updatedAt: string }): Address {
+  return {
+    gateId: 'gate-1',
+    address: '123 Oak Lane',
+    notes: '',
+    createdAt: overrides.updatedAt,
+    deletedAt: null,
+    ...overrides,
+  }
+}
+
+function fakeAddressRepo(local: Address[]): AddressRepository & { applied: Address[] } {
+  const applied: Address[] = []
+  return {
+    listAddresses: () => local,
+    listAddressesForGate: () => local,
+    createAddress: vi.fn(),
+    updateAddress: vi.fn(),
+    deleteAddress: vi.fn(),
+    exportAddresses: () => local,
+    importAddresses: vi.fn(),
+    applyRemoteAddresses: (addresses) => applied.push(...addresses),
+    applied,
+  }
+}
+
+describe('syncAddresses', () => {
+  it('pulls remote-newer addresses locally and pushes local-newer addresses', async () => {
+    const localOnly = makeAddress({ id: 'a', updatedAt: '2026-01-01T00:00:00.000Z' })
+    const remoteOnly = makeAddress({ id: 'b', updatedAt: '2026-01-01T00:00:00.000Z' })
+    const repo = fakeAddressRepo([localOnly])
+
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      if (!init || init.method === undefined) {
+        return { ok: true, json: () => Promise.resolve([remoteOnly]) }
+      }
+      return { ok: true, json: () => Promise.resolve({ ok: true }) }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await syncAddresses(repo)
+
+    expect(repo.applied).toEqual([remoteOnly])
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/addresses',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify([localOnly]) }),
+    )
+  })
+
+  it('throws when the pull fails', async () => {
+    const repo = fakeAddressRepo([])
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }))
+
+    await expect(syncAddresses(repo)).rejects.toThrow('Failed to pull addresses from the server')
   })
 })

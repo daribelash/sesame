@@ -1,3 +1,4 @@
+import type { Address, AddressRepository } from './addressRepository'
 import { reconcile } from './reconciler'
 import type { Gate, GateRepository } from './repository'
 
@@ -29,5 +30,30 @@ export async function syncGates(repo: GateRepository): Promise<void> {
       body: JSON.stringify(toPush),
     })
     if (!pushResponse.ok) throw new Error('Failed to push gates to the server')
+  }
+}
+
+/** Same shape as syncGates — see there for the rationale. */
+export async function syncAddresses(repo: AddressRepository): Promise<void> {
+  const local = repo.exportAddresses()
+
+  const pullResponse = await fetch('/api/addresses', { credentials: 'same-origin' })
+  if (!pullResponse.ok) throw new Error('Failed to pull addresses from the server')
+  const remote = (await pullResponse.json()) as Address[]
+
+  const { toPush, toApplyLocally } = reconcile(local, remote)
+
+  if (toApplyLocally.length > 0) {
+    repo.applyRemoteAddresses(toApplyLocally)
+  }
+
+  if (toPush.length > 0) {
+    const pushResponse = await fetch('/api/addresses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(toPush),
+    })
+    if (!pushResponse.ok) throw new Error('Failed to push addresses to the server')
   }
 }
