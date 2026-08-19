@@ -1,8 +1,5 @@
 name: ci
 
-# Sprint 3 shape: typecheck, lint, unit/component tests, and e2e.
-# This file grows with the project rather than being retrofitted:
-#   sprint 5 — add the postgres service to an integration job
 on:
   push:
   pull_request:
@@ -42,26 +39,13 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
 
-# --- added in sprint 5 -------------------------------------------------------
-#
-#  integration:
-#    runs-on: ubuntu-latest
-#    services:
-#      postgres:
-#        image: postgres:17
-#        env:
-#          POSTGRES_PASSWORD: postgres
-#        options: >-
-#          --health-cmd pg_isready
-#          --health-interval 10s
-#          --health-timeout 5s
-#          --health-retries 5
-#        ports: ['5432:5432']
-#    steps:
-#      - uses: actions/checkout@v4
-#      - uses: actions/setup-node@v4
-#        with: { node-version: 22, cache: npm }
-#      - run: npm ci
-#      - run: npm run test:integration
-#        env:
-#          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      # Testcontainers provisions its own disposable Postgres via Docker,
+      # already available on ubuntu-latest runners — no services: block needed.
+      - run: npm run test:integration
