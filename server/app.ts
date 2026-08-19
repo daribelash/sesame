@@ -3,6 +3,7 @@ import path from 'node:path'
 import fastifyCookie from '@fastify/cookie'
 import fastifyStatic from '@fastify/static'
 import Fastify, { type FastifyInstance } from 'fastify'
+import { registerAddressRoutes } from './addresses/routes.js'
 import { registerAuthRoutes } from './auth/routes.js'
 import type { Queryable } from './db.js'
 import { registerGateRoutes } from './gates/routes.js'
@@ -22,6 +23,7 @@ export function buildApp(db: Queryable): FastifyInstance {
   app.register(fastifyCookie)
   registerAuthRoutes(app, db)
   registerGateRoutes(app, db)
+  registerAddressRoutes(app, db)
 
   app.get('/health', async () => {
     const { rows } = await db.query<TableCounts>(`
