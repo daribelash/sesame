@@ -36,9 +36,16 @@ export default defineConfig({
       },
     }),
   ],
+  server: {
+    // Keeps dev same-origin with the API (npm run dev:server on :3000),
+    // matching the single-origin shape production actually runs under.
+    proxy: {
+      '/api': 'http://localhost:3000',
+    },
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/setupTests.ts'],
-    exclude: ['e2e/**', 'server/**', 'node_modules/**'],
+    exclude: ['e2e/**', 'server/**/*.integration.test.ts', 'node_modules/**'],
   },
 })
