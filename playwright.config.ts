@@ -11,10 +11,12 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    // Production build: the service worker that makes offline work only
-    // exists once built, not under the plain vite dev server.
-    command: 'npm run build && npm run preview -- --port 4173 --strictPort',
+    // The real server, not `vite preview`: auth needs real API routes and a
+    // real DB (DATABASE_URL from scripts/run-e2e.sh), and the service
+    // worker that makes offline work only exists once built.
+    command: 'npm run build && npm start',
     url: 'http://localhost:4173',
+    env: { PORT: '4173' },
     reuseExistingServer: !process.env.CI,
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],

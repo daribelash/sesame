@@ -5,6 +5,17 @@ import { test, expect, type Page } from '@playwright/test'
 const positionA = { latitude: 32.7767, longitude: -96.797 }
 const positionB = { latitude: 32.7767 + 2 / 69, longitude: -96.797 }
 
+// Gates are scoped per account, so every test needs one of its own.
+async function registerAccount(page: Page) {
+  const email = `e2e-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`
+  await page.getByRole('button', { name: 'Log in' }).click()
+  await page.getByRole('button', { name: 'Need an account? Register' }).click()
+  await page.getByLabel('Email').fill(email)
+  await page.getByLabel('Password').fill('correct horse battery staple')
+  await page.getByRole('button', { name: 'Register' }).click()
+  await expect(page.getByText(`Logged in as ${email}`)).toBeVisible()
+}
+
 async function saveGate(page: Page, name: string, code: string) {
   await page.getByLabel('Gate name').fill(name)
   await page.getByLabel('Code').fill(code)
@@ -23,6 +34,7 @@ test('the gate at your current position is top of the list', async ({ browser })
   })
   const page = await context.newPage()
   await page.goto('/')
+  await registerAccount(page)
 
   await saveGate(page, 'Oakwood Estates', '0451#')
 
@@ -41,6 +53,7 @@ test('ordering changes when the phone moves to a different saved gate', async ({
   })
   const page = await context.newPage()
   await page.goto('/')
+  await registerAccount(page)
 
   await saveGate(page, 'Oakwood Estates', '0451#')
 
@@ -63,6 +76,7 @@ test('the list still renders when location permission is denied', async ({ brows
   const context = await browser.newContext()
   const page = await context.newPage()
   await page.goto('/')
+  await registerAccount(page)
 
   await saveGate(page, 'Oakwood Estates', '0451#')
   await page.reload()
