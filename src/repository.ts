@@ -6,6 +6,14 @@
 // logging out — or a different account logging in on the same device —
 // never shows one account's gates to another.
 
+export interface CodeHistoryEntry {
+  id: string
+  code: string
+  /** When this code stopped being current — the previous one is often
+   * still live for a while after a community rotates it. */
+  supersededAt: string
+}
+
 export interface Gate {
   id: string
   name: string
@@ -17,6 +25,8 @@ export interface Gate {
   createdAt: string
   updatedAt: string
   deletedAt: string | null
+  /** Newest first. Superseded codes are kept, never overwritten. */
+  codeHistory: CodeHistoryEntry[]
 }
 
 export type NewGateInput = Pick<Gate, 'name' | 'code' | 'notes'> &
@@ -50,7 +60,13 @@ export function createGateRepository(userId: string): GateRepository {
 
   function readAll(): Gate[] {
     const raw = localStorage.getItem(storageKey)
-    return raw ? (JSON.parse(raw) as Gate[]) : []
+    if (!raw) return []
+
+    // Gates saved before codeHistory existed on the schema don't have it —
+    // normalize here so every caller can trust the shape, rather than every
+    // reader needing to guard against a stale local record.
+    const parsed = JSON.parse(raw) as Gate[]
+    return parsed.map((gate) => ({ ...gate, codeHistory: gate.codeHistory ?? [] }))
   }
 
   function writeAll(gates: Gate[]): void {
@@ -77,6 +93,7 @@ export function createGateRepository(userId: string): GateRepository {
         createdAt: now,
         updatedAt: now,
         deletedAt: null,
+        codeHistory: [],
       }
       writeAll([...readAll(), gate])
       return gate
@@ -87,10 +104,20 @@ export function createGateRepository(userId: string): GateRepository {
       const index = gates.findIndex((gate) => gate.id === id)
       if (index === -1) return undefined
 
+      const existing = gates[index]
+      const now = new Date().toISOString()
+      const codeChanged = changes.code !== undefined && changes.code !== existing.code
+
       const updated: Gate = {
-        ...gates[index],
+        ...existing,
         ...changes,
-        updatedAt: new Date().toISOString(),
+        codeHistory: codeChanged
+          ? [
+              { id: crypto.randomUUID(), code: existing.code, supersededAt: now },
+              ...existing.codeHistory,
+            ]
+          : existing.codeHistory,
+        updatedAt: now,
       }
       gates[index] = updated
       writeAll(gates)

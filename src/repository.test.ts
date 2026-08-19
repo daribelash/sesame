@@ -56,6 +56,33 @@ describe('createGate', () => {
   })
 })
 
+describe('reading legacy data', () => {
+  it('normalizes gates saved before codeHistory existed, rather than crashing', () => {
+    localStorage.setItem(
+      `sesame:gates:${userId}`,
+      JSON.stringify([
+        {
+          id: '1',
+          name: 'Riverbend',
+          code: '7788',
+          notes: '',
+          lat: null,
+          lng: null,
+          accuracy: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          deletedAt: null,
+          // no codeHistory field — this is what pre-sprint-8 data looks like
+        },
+      ]),
+    )
+
+    const gates = createGateRepository(userId).listGates()
+
+    expect(gates[0].codeHistory).toEqual([])
+  })
+})
+
 describe('listGates', () => {
   it('returns an empty list when nothing has been saved', () => {
     expect(createGateRepository(userId).listGates()).toEqual([])
@@ -85,6 +112,39 @@ describe('updateGate', () => {
 
   it('returns undefined for an id that does not exist', () => {
     expect(createGateRepository(userId).updateGate('missing-id', { code: '9999' })).toBeUndefined()
+  })
+
+  it('records the superseded code in history when the code changes', () => {
+    const repo = createGateRepository(userId)
+    const gate = repo.createGate({ name: 'Oakwood Estates', code: '0451#', notes: '' })
+
+    const updated = repo.updateGate(gate.id, { code: '9999' })
+
+    expect(updated?.code).toBe('9999')
+    expect(updated?.codeHistory).toHaveLength(1)
+    expect(updated?.codeHistory[0].code).toBe('0451#')
+    expect(updated?.codeHistory[0].supersededAt).toBe(updated?.updatedAt)
+  })
+
+  it('accumulates history newest-first across multiple code changes', () => {
+    const repo = createGateRepository(userId)
+    const gate = repo.createGate({ name: 'Oakwood Estates', code: '1111', notes: '' })
+
+    repo.updateGate(gate.id, { code: '2222' })
+    const final = repo.updateGate(gate.id, { code: '3333' })
+
+    expect(final?.code).toBe('3333')
+    expect(final?.codeHistory.map((entry) => entry.code)).toEqual(['2222', '1111'])
+  })
+
+  it('does not record history when the code is unchanged', () => {
+    const repo = createGateRepository(userId)
+    const gate = repo.createGate({ name: 'Oakwood Estates', code: '0451#', notes: '' })
+
+    const updated = repo.updateGate(gate.id, { name: 'New name, same code' })
+
+    expect(updated?.code).toBe('0451#')
+    expect(updated?.codeHistory).toEqual([])
   })
 })
 
@@ -144,6 +204,7 @@ describe('exportGates/importGates', () => {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         deletedAt: null,
+        codeHistory: [],
       },
     ]
 
@@ -180,6 +241,7 @@ describe('applyRemoteGates', () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       deletedAt: null,
+      codeHistory: [],
     }
 
     repo.applyRemoteGates([fromServer])
