@@ -1,41 +1,45 @@
-import type { Gate } from './repository'
+export interface Syncable {
+  id: string
+  updatedAt: string
+}
 
-export interface ReconcileResult {
-  /** Local gates the server hasn't seen, or has an older version of. */
-  toPush: Gate[]
-  /** Remote gates missing locally, or newer than the local copy. */
-  toApplyLocally: Gate[]
+export interface ReconcileResult<T> {
+  /** Local records the server hasn't seen, or has an older version of. */
+  toPush: T[]
+  /** Remote records missing locally, or newer than the local copy. */
+  toApplyLocally: T[]
 }
 
 /**
- * Last-write-wins on updated_at, applied uniformly per gate id — no special
- * casing for deletes vs edits. A tombstone is just a gate whose updatedAt
+ * Last-write-wins on updatedAt, applied uniformly per record id — no special
+ * casing for deletes vs edits. A tombstone is just a record whose updatedAt
  * happens to be a delete; whichever side has the later timestamp wins,
- * whether that's an edit resurrecting a remotely-deleted gate or a delete
+ * whether that's an edit resurrecting a remotely-deleted record or a delete
  * overwriting a local edit. This is the highest-risk logic in the codebase
- * (CLAUDE.md) — keep it this simple on purpose.
+ * (CLAUDE.md) — keep it this simple on purpose. Generic so gates and
+ * addresses share the exact same, exhaustively tested algorithm.
  */
-export function reconcile(localGates: Gate[], remoteGates: Gate[]): ReconcileResult {
-  const localById = new Map(localGates.map((gate) => [gate.id, gate]))
-  const remoteById = new Map(remoteGates.map((gate) => [gate.id, gate]))
+export function reconcile<T extends Syncable>(local: T[], remote: T[]): ReconcileResult<T> {
+  const localById = new Map(local.map((record) => [record.id, record]))
+  const remoteById = new Map(remote.map((record) => [record.id, record]))
   const allIds = new Set([...localById.keys(), ...remoteById.keys()])
 
-  const toPush: Gate[] = []
-  const toApplyLocally: Gate[] = []
+  const toPush: T[] = []
+  const toApplyLocally: T[] = []
 
   for (const id of allIds) {
-    const local = localById.get(id)
-    const remote = remoteById.get(id)
+    const localRecord = localById.get(id)
+    const remoteRecord = remoteById.get(id)
 
-    if (local && !remote) {
-      toPush.push(local)
-    } else if (remote && !local) {
-      toApplyLocally.push(remote)
-    } else if (local && remote) {
-      if (local.updatedAt > remote.updatedAt) {
-        toPush.push(local)
-      } else if (remote.updatedAt > local.updatedAt) {
-        toApplyLocally.push(remote)
+    if (localRecord && !remoteRecord) {
+      toPush.push(localRecord)
+    } else if (remoteRecord && !localRecord) {
+      toApplyLocally.push(remoteRecord)
+    } else if (localRecord && remoteRecord) {
+      if (localRecord.updatedAt > remoteRecord.updatedAt) {
+        toPush.push(localRecord)
+      } else if (remoteRecord.updatedAt > localRecord.updatedAt) {
+        toApplyLocally.push(remoteRecord)
       }
       // Equal updatedAt: already in sync, nothing to do either direction.
     }

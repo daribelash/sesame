@@ -17,6 +17,7 @@ function makeGate(overrides: Partial<Gate> = {}): Gate {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     deletedAt: null,
+    codeHistory: [],
     ...overrides,
   }
 }

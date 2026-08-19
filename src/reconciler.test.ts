@@ -12,6 +12,7 @@ function makeGate(overrides: Partial<Gate> & { id: string; updatedAt: string }):
     accuracy: null,
     createdAt: overrides.updatedAt,
     deletedAt: null,
+    codeHistory: [],
     ...overrides,
   }
 }
