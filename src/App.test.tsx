@@ -31,12 +31,14 @@ function mockFetchRouter(handlers: Record<string, { status: number; body: unknow
 
 /** Most tests care about gate behaviour, not the auth flow itself — this
  * mocks the common case of an already-logged-in returning user, with an
- * empty remote gate list unless overridden. */
-function mockLoggedIn(remoteGates: unknown[] = []) {
+ * empty remote gate/address list unless overridden. */
+function mockLoggedIn(remoteGates: unknown[] = [], remoteAddresses: unknown[] = []) {
   return mockFetchRouter({
     'GET /api/me': { status: 200, body: testUser },
     'GET /api/gates': { status: 200, body: remoteGates },
     'POST /api/gates': { status: 200, body: { ok: true } },
+    'GET /api/addresses': { status: 200, body: remoteAddresses },
+    'POST /api/addresses': { status: 200, body: { ok: true } },
   })
 }
 
@@ -74,6 +76,57 @@ describe('App', () => {
     await screen.findByRole('heading', { name: 'Oakwood Estates' })
     expect(screen.getByLabelText('Gate name')).toHaveValue('')
     expect(screen.getByLabelText('Code')).toHaveValue('')
+  })
+
+  it('searching an address surfaces its gate, current code, and previous code', async () => {
+    mockLoggedIn()
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.type(await screen.findByLabelText('Gate name'), 'Oakwood Estates')
+    await user.type(screen.getByLabelText('Code'), '0451#')
+    await user.click(screen.getByRole('button', { name: 'Save gate' }))
+    await screen.findByRole('heading', { name: 'Oakwood Estates' })
+
+    await user.click(screen.getByRole('button', { name: 'Change code' }))
+    await user.clear(screen.getByLabelText('New code'))
+    await user.type(screen.getByLabelText('New code'), '9999')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await screen.findByText('9999')
+
+    await user.click(screen.getByRole('button', { name: 'Add address' }))
+    await user.type(screen.getByLabelText('Address'), '123 Oak Lane')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await screen.findByText('123 Oak Lane')
+
+    await user.type(screen.getByLabelText('Search by address'), 'Oak Lane')
+
+    const results = screen
+      .getByRole('heading', { level: 3, name: 'Oakwood Estates' })
+      .closest('li')!
+    expect(results).toHaveTextContent('9999')
+    expect(results).toHaveTextContent('Previously: 0451#')
+    expect(results).toHaveTextContent('123 Oak Lane')
+  })
+
+  it('changing a code shows it as history, with the new code current', async () => {
+    mockLoggedIn()
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.type(await screen.findByLabelText('Gate name'), 'Oakwood Estates')
+    await user.type(screen.getByLabelText('Code'), '0451#')
+    await user.click(screen.getByRole('button', { name: 'Save gate' }))
+    await screen.findByRole('heading', { name: 'Oakwood Estates' })
+
+    await user.click(screen.getByRole('button', { name: 'Change code' }))
+    const input = screen.getByLabelText('New code')
+    await user.clear(input)
+    await user.type(input, '9999')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByText('9999')).toBeInTheDocument()
+    expect(screen.getByText(/Previously 0451#/)).toBeInTheDocument()
   })
 
   it('still saves a gate when location permission is denied', async () => {
@@ -117,6 +170,7 @@ describe('App', () => {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           deletedAt: null,
+          codeHistory: [],
         },
       ]),
     )
@@ -141,6 +195,7 @@ describe('App', () => {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           deletedAt: null,
+          codeHistory: [],
         },
       ]),
     )
@@ -225,6 +280,7 @@ describe('App', () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       deletedAt: null,
+      codeHistory: [],
     }
     mockLoggedIn([remoteGate])
 

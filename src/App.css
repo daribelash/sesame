@@ -75,7 +75,36 @@ button:hover {
   font-family: var(--mono);
   font-size: 20px;
   color: var(--text-h);
+  margin: 0 0 4px;
+}
+
+.update-code-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0 0 8px;
+}
+
+.update-code-form input {
+  font: inherit;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  width: 8em;
+}
+
+.update-code-form button {
+  padding: 4px 10px;
+}
+
+.code-history {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text);
 }
 
 .gate .notes {
@@ -96,8 +125,83 @@ button:hover {
 }
 
 .gate .updated {
-  margin: 0;
+  margin: 0 0 8px;
   font-size: 13px;
+}
+
+.address-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--text-h);
+}
+
+.address-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.address-form .field {
+  flex: 1 1 140px;
+}
+
+.address-form input {
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.address-form button {
+  padding: 6px 12px;
+}
+
+.address-search {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.address-search-results {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.address-search-results li {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.address-search-results h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.address-search-results .code {
+  font-family: var(--mono);
+  font-size: 18px;
+  color: var(--text-h);
+  margin: 0 0 4px;
+}
+
+.address-search-results .previous-code,
+.address-search-results .matched-address {
+  font-size: 13px;
+  color: var(--text);
+  margin: 0 0 4px;
 }
 
 .radius-filter {
@@ -170,4 +274,16 @@ button:hover {
 
 .sync-status--error {
   color: #dc2626;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
