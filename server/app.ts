@@ -1,7 +1,9 @@
 import { existsSync } from 'node:fs'
 import path from 'node:path'
+import fastifyCookie from '@fastify/cookie'
 import fastifyStatic from '@fastify/static'
 import Fastify, { type FastifyInstance } from 'fastify'
+import { registerAuthRoutes } from './auth/routes.js'
 import type { Queryable } from './db.js'
 
 const DIST_DIR = path.join(import.meta.dirname, '..', 'dist')
@@ -15,6 +17,9 @@ interface TableCounts {
 
 export function buildApp(db: Queryable): FastifyInstance {
   const app = Fastify()
+
+  app.register(fastifyCookie)
+  registerAuthRoutes(app, db)
 
   app.get('/health', async () => {
     const { rows } = await db.query<TableCounts>(`
