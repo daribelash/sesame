@@ -128,3 +128,36 @@ button:hover {
 .data-tools label {
   cursor: pointer;
 }
+
+.auth-panel,
+.account-bar {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.auth-panel form {
+  margin-bottom: 12px;
+}
+
+.auth-panel [role='alert'] {
+  color: #dc2626;
+  font-size: 14px;
+  margin: -4px 0 4px;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: var(--accent);
+  padding: 0;
+  font-size: 14px;
+}
+
+.account-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
