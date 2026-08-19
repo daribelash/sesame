@@ -153,6 +153,41 @@ describe('exportGates/importGates', () => {
   })
 })
 
+describe('applyRemoteGates', () => {
+  it('upserts without touching gates the server did not send', () => {
+    const repo = createGateRepository(userId)
+    const untouched = repo.createGate({ name: 'Untouched', code: '0000', notes: '' })
+    const existing = repo.createGate({ name: 'Old name', code: '1111', notes: '' })
+
+    const updatedFromServer = { ...existing, name: 'New name from server' }
+    repo.applyRemoteGates([updatedFromServer])
+
+    const gates = repo.listGates()
+    expect(gates.find((g) => g.id === existing.id)?.name).toBe('New name from server')
+    expect(gates.find((g) => g.id === untouched.id)?.name).toBe('Untouched')
+  })
+
+  it('adds gates that only existed remotely', () => {
+    const repo = createGateRepository(userId)
+    const fromServer = {
+      id: 'remote-1',
+      name: 'From server',
+      code: '2222',
+      notes: '',
+      lat: null,
+      lng: null,
+      accuracy: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      deletedAt: null,
+    }
+
+    repo.applyRemoteGates([fromServer])
+
+    expect(repo.listGates()).toEqual([fromServer])
+  })
+})
+
 describe('per-user isolation', () => {
   it('never shows one account gates to another', () => {
     const repoA = createGateRepository('user-a')

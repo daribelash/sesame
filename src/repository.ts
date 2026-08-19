@@ -37,6 +37,12 @@ export interface GateRepository {
    * this is a restore operation, not a merge.
    */
   importGates(gates: Gate[]): void
+  /**
+   * Upserts gates from the server into the existing local store — a merge,
+   * not a replace. Used by sync to apply the reconciler's toApplyLocally
+   * without touching gates the server didn't send back.
+   */
+  applyRemoteGates(gates: Gate[]): void
 }
 
 export function createGateRepository(userId: string): GateRepository {
@@ -107,6 +113,14 @@ export function createGateRepository(userId: string): GateRepository {
 
     importGates(gates) {
       writeAll(gates)
+    },
+
+    applyRemoteGates(gates) {
+      const byId = new Map(readAll().map((gate) => [gate.id, gate]))
+      for (const gate of gates) {
+        byId.set(gate.id, gate)
+      }
+      writeAll([...byId.values()])
     },
   }
 }
