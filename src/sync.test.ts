@@ -30,7 +30,6 @@ function fakeRepo(local: Gate[]): GateRepository & { applied: Gate[] } {
     updateGate: vi.fn(),
     deleteGate: vi.fn(),
     exportGates: () => local,
-    importGates: vi.fn(),
     applyRemoteGates: (gates) => applied.push(...gates),
     applied,
   }
@@ -109,7 +108,6 @@ function fakeAddressRepo(local: Address[]): AddressRepository & { applied: Addre
     updateAddress: vi.fn(),
     deleteAddress: vi.fn(),
     exportAddresses: () => local,
-    importAddresses: vi.fn(),
     applyRemoteAddresses: (addresses) => applied.push(...addresses),
     applied,
   }

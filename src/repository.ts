@@ -39,14 +39,8 @@ export interface GateRepository {
   createGate(input: NewGateInput): Gate
   updateGate(id: string, changes: GateUpdateInput): Gate | undefined
   deleteGate(id: string): void
-  /** Every gate, including soft-deleted tombstones, for backup. */
+  /** Every gate, including soft-deleted tombstones — used by sync to reconcile. */
   exportGates(): Gate[]
-  /**
-   * Restores from a backup, replacing this user's local store outright.
-   * There is no sync yet, so there is no other copy to reconcile against —
-   * this is a restore operation, not a merge.
-   */
-  importGates(gates: Gate[]): void
   /**
    * Upserts gates from the server into the existing local store — a merge,
    * not a replace. Used by sync to apply the reconciler's toApplyLocally
@@ -136,10 +130,6 @@ export function createGateRepository(userId: string): GateRepository {
 
     exportGates() {
       return readAll()
-    },
-
-    importGates(gates) {
-      writeAll(gates)
     },
 
     applyRemoteGates(gates) {

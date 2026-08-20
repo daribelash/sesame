@@ -25,7 +25,6 @@ export interface AddressRepository {
   updateAddress(id: string, changes: AddressUpdateInput): Address | undefined
   deleteAddress(id: string): void
   exportAddresses(): Address[]
-  importAddresses(addresses: Address[]): void
   applyRemoteAddresses(addresses: Address[]): void
 }
 
@@ -94,10 +93,6 @@ export function createAddressRepository(userId: string): AddressRepository {
 
     exportAddresses() {
       return readAll()
-    },
-
-    importAddresses(addresses) {
-      writeAll(addresses)
     },
 
     applyRemoteAddresses(addresses) {

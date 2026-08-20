@@ -163,8 +163,8 @@ describe('deleteGate', () => {
   })
 })
 
-describe('exportGates/importGates', () => {
-  it('round-trips all gates, including soft-deleted tombstones, without data loss', () => {
+describe('exportGates', () => {
+  it('includes soft-deleted tombstones, unlike listGates', () => {
     const repo = createGateRepository(userId)
     const active = repo.createGate({
       name: 'Oakwood Estates',
@@ -177,40 +177,10 @@ describe('exportGates/importGates', () => {
     const toDelete = repo.createGate({ name: 'Old Gate', code: '9999', notes: '' })
     repo.deleteGate(toDelete.id)
 
-    const exported = repo.exportGates()
-    expect(exported).toHaveLength(2)
-
-    localStorage.clear()
-    expect(repo.listGates()).toEqual([])
-
-    repo.importGates(exported)
-
     expect(repo.listGates()).toEqual([active])
-    expect(repo.exportGates()).toEqual(exported)
-  })
-
-  it('replaces the existing store rather than merging into it', () => {
-    const repo = createGateRepository(userId)
-    repo.createGate({ name: 'Will be replaced', code: '0000', notes: '' })
-    const incoming = [
-      {
-        id: 'imported-1',
-        name: 'From backup',
-        code: '1111',
-        notes: '',
-        lat: null,
-        lng: null,
-        accuracy: null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        deletedAt: null,
-        codeHistory: [],
-      },
-    ]
-
-    repo.importGates(incoming)
-
-    expect(repo.listGates()).toEqual(incoming)
+    expect(repo.exportGates().map((gate) => gate.id)).toEqual(
+      expect.arrayContaining([active.id, toDelete.id]),
+    )
   })
 })
 

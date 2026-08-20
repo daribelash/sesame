@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { GateForm } from './GateForm'
 import { GateList } from './GateList'
 import { RadiusFilter } from './RadiusFilter'
-import { DataTools } from './DataTools'
 import { AuthPanel } from './AuthPanel'
 import { AccountBar } from './AccountBar'
 import { AddressSearch } from './AddressSearch'
@@ -179,7 +178,6 @@ function App() {
         onUpdateCode={handleUpdateCode}
         onAddAddress={handleAddAddress}
       />
-      <DataTools repo={gateRepo} onImport={refresh} />
     </main>
   )
 }
