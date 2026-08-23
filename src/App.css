@@ -366,9 +366,10 @@ button:hover {
 }
 
 .search-field input {
-  padding-left: 34px;
+  padding: 8px 10px 8px 34px;
   width: 100%;
   box-sizing: border-box;
+  background: var(--surface);
 }
 
 .search-group-label,

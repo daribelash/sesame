@@ -301,6 +301,7 @@ function App() {
       <GateSearch gates={gates} addresses={addresses} onOpenGate={setActiveGateId} />
       <button
         type="button"
+        className="btn-block"
         onClick={() => {
           setMapCreateAt(null)
           setShowAddGate(true)
