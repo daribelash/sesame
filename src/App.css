@@ -551,7 +551,7 @@ button:hover {
   border-radius: var(--radius);
   background: var(--surface);
   padding: 16px;
-  margin-bottom: 16px;
+  margin: 16px 0;
 }
 
 .map-card-placeholder {
