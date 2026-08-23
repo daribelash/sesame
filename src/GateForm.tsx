@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import type { NewGateInput } from './repository'
 import { getCurrentFix } from './geolocation'
 import type { Coordinates } from './distance'
+import { AddressAutocompleteInput } from './AddressAutocompleteInput'
 
 interface GateFormProps {
   /** Address is optional — when provided, the caller also creates an
@@ -20,18 +21,29 @@ export function GateForm({ onAdd, initialCoordinates, onCancel }: GateFormProps)
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
   const [address, setAddress] = useState('')
+  const [addressLocation, setAddressLocation] = useState<Coordinates | null>(null)
+  const [useAddressLocation, setUseAddressLocation] = useState(false)
   const [notes, setNotes] = useState('')
+
+  function handleAddressChange(nextValue: string) {
+    setAddress(nextValue)
+    if (!nextValue.trim()) setUseAddressLocation(false)
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!name.trim() || !code.trim()) return
 
-    // Explicit long-press coordinates win over a fresh GPS fix — the user
-    // just pointed at the exact intended spot, and it isn't a GPS reading
-    // so there's no accuracy figure to record.
+    // Priority: an explicit long-press point on the map (the user pointed at
+    // the exact spot) beats a picked address's location (the driver's own
+    // opt-in, via the checkbox, to place the pin there instead of at their
+    // current position) beats a fresh GPS fix. None of the first two are GPS
+    // readings, so there's no accuracy figure to record for them.
     const { lat, lng, accuracy } = initialCoordinates
       ? { lat: initialCoordinates.lat, lng: initialCoordinates.lng, accuracy: null }
-      : await captureFix()
+      : useAddressLocation && addressLocation
+        ? { lat: addressLocation.lat, lng: addressLocation.lng, accuracy: null }
+        : await captureFix()
 
     onAdd(
       { name: name.trim(), code: code.trim(), notes: notes.trim(), lat, lng, accuracy },
@@ -40,6 +52,8 @@ export function GateForm({ onAdd, initialCoordinates, onCancel }: GateFormProps)
     setName('')
     setCode('')
     setAddress('')
+    setAddressLocation(null)
+    setUseAddressLocation(false)
     setNotes('')
   }
 
@@ -74,12 +88,23 @@ export function GateForm({ onAdd, initialCoordinates, onCancel }: GateFormProps)
 
       <div className="field">
         <label htmlFor="gate-address">Address (optional)</label>
-        <input
+        <AddressAutocompleteInput
           id="gate-address"
           value={address}
-          onChange={(event) => setAddress(event.target.value)}
+          onChange={handleAddressChange}
+          onPlaceSelected={setAddressLocation}
           placeholder="123 Oak Lane"
         />
+        {addressLocation && (
+          <label className="flag-checkbox">
+            <input
+              type="checkbox"
+              checked={useAddressLocation}
+              onChange={(event) => setUseAddressLocation(event.target.checked)}
+            />
+            Use this address's location for the map pin
+          </label>
+        )}
       </div>
 
       <div className="field">
