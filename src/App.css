@@ -649,13 +649,18 @@ button:hover {
 }
 
 .gate-snapshot-name {
-  font-weight: 600;
   color: var(--text-h);
 }
 
 .gate-snapshot-meta {
   font-size: 13px;
   color: var(--text);
+}
+
+.gate-snapshot--flat .code {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
 }
 
 .gate-snapshot--card .gate-snapshot-list {
