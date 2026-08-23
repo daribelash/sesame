@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen, within } from '@testing-library/react'
+import userEvent, { type UserEvent } from '@testing-library/user-event'
 import App from './App'
+
+/** The add-gate form lives behind a bottom sheet, opened by "+ Add gate". */
+async function openAddGateSheet(user: UserEvent) {
+  await user.click(await screen.findByRole('button', { name: '+ Add gate' }))
+}
 
 const originalGeolocation = navigator.geolocation
 const testUser = { id: 'user-1', email: 'driver@example.com' }
@@ -52,28 +57,67 @@ describe('App', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.type(await screen.findByLabelText('Gate name'), 'Oakwood Estates')
+    await openAddGateSheet(user)
+    await user.type(screen.getByLabelText('Gate name'), 'Oakwood Estates')
     await user.type(screen.getByLabelText('Code'), '0451#')
     await user.type(screen.getByLabelText('Notes'), 'call box on the right')
     await user.click(screen.getByRole('button', { name: 'Save gate' }))
 
+    const card = (
+      await screen.findByRole('button', { name: 'Open Oakwood Estates' })
+    ).closest('li')!
+    expect(within(card).getByText('0451#')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Open Oakwood Estates' }))
     expect(
-      await screen.findByRole('heading', { name: 'Oakwood Estates' }),
+      within(screen.getByRole('dialog')).getByText('call box on the right'),
     ).toBeInTheDocument()
-    expect(screen.getByText('0451#')).toBeInTheDocument()
-    expect(screen.getByText('call box on the right')).toBeInTheDocument()
   })
 
-  it('clears the form after a successful submit', async () => {
+  it('creates an address too when one is entered on the add-gate form', async () => {
     mockLoggedIn()
     const user = userEvent.setup()
     render(<App />)
 
-    await user.type(await screen.findByLabelText('Gate name'), 'Oakwood Estates')
+    await openAddGateSheet(user)
+    await user.type(screen.getByLabelText('Gate name'), 'Oakwood Estates')
+    await user.type(screen.getByLabelText('Code'), '0451#')
+    await user.type(screen.getByLabelText('Address (optional)'), '123 Oak Lane')
+    await user.click(screen.getByRole('button', { name: 'Save gate' }))
+
+    await screen.findByRole('heading', { name: 'Oakwood Estates' })
+    await user.click(screen.getByRole('button', { name: 'Open Oakwood Estates' }))
+    expect(screen.getByText('123 Oak Lane')).toBeInTheDocument()
+  })
+
+  it('does not create an address when the field is left blank', async () => {
+    mockLoggedIn()
+    const user = userEvent.setup()
+    render(<App />)
+
+    await openAddGateSheet(user)
+    await user.type(screen.getByLabelText('Gate name'), 'Oakwood Estates')
     await user.type(screen.getByLabelText('Code'), '0451#')
     await user.click(screen.getByRole('button', { name: 'Save gate' }))
 
     await screen.findByRole('heading', { name: 'Oakwood Estates' })
+    expect(screen.getByText(/^0 addresses · updated/)).toBeInTheDocument()
+  })
+
+  it('closes the sheet after a successful submit, with a blank form next time', async () => {
+    mockLoggedIn()
+    const user = userEvent.setup()
+    render(<App />)
+
+    await openAddGateSheet(user)
+    await user.type(screen.getByLabelText('Gate name'), 'Oakwood Estates')
+    await user.type(screen.getByLabelText('Code'), '0451#')
+    await user.click(screen.getByRole('button', { name: 'Save gate' }))
+
+    await screen.findByRole('heading', { name: 'Oakwood Estates' })
+    expect(screen.queryByLabelText('Gate name')).not.toBeInTheDocument()
+
+    await openAddGateSheet(user)
     expect(screen.getByLabelText('Gate name')).toHaveValue('')
     expect(screen.getByLabelText('Code')).toHaveValue('')
   })
@@ -83,23 +127,27 @@ describe('App', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.type(await screen.findByLabelText('Gate name'), 'Oakwood Estates')
+    await openAddGateSheet(user)
+    await user.type(screen.getByLabelText('Gate name'), 'Oakwood Estates')
     await user.type(screen.getByLabelText('Code'), '0451#')
     await user.click(screen.getByRole('button', { name: 'Save gate' }))
     await screen.findByRole('heading', { name: 'Oakwood Estates' })
 
-    await user.click(screen.getByRole('button', { name: 'Change code' }))
-    await user.clear(screen.getByLabelText('New code'))
-    await user.type(screen.getByLabelText('New code'), '9999')
-    await user.click(screen.getByRole('button', { name: 'Save' }))
-    await screen.findByText('9999')
+    await user.click(screen.getByRole('button', { name: 'Open Oakwood Estates' }))
+    const sheet = within(screen.getByRole('dialog'))
+    await user.click(sheet.getByRole('button', { name: 'Edit' }))
+    await user.clear(sheet.getByLabelText('Code'))
+    await user.type(sheet.getByLabelText('Code'), '9999')
+    await user.click(sheet.getByRole('button', { name: 'Save' }))
+    await sheet.findByText('9999')
 
-    await user.click(screen.getByRole('button', { name: 'Add address' }))
-    await user.type(screen.getByLabelText('Address'), '123 Oak Lane')
-    await user.click(screen.getByRole('button', { name: 'Save' }))
-    await screen.findByText('123 Oak Lane')
+    await user.click(sheet.getByRole('button', { name: 'Add address' }))
+    await user.type(sheet.getByLabelText('Address'), '123 Oak Lane')
+    await user.click(sheet.getByRole('button', { name: 'Save' }))
+    await sheet.findByText('123 Oak Lane')
 
-    await user.type(screen.getByLabelText('Search by address'), 'Oak Lane')
+    await user.click(sheet.getByRole('button', { name: 'Close' }))
+    await user.type(screen.getByLabelText('Search by gate name or address'), 'Oak Lane')
 
     const results = screen
       .getByRole('heading', { level: 3, name: 'Oakwood Estates' })
@@ -114,19 +162,22 @@ describe('App', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.type(await screen.findByLabelText('Gate name'), 'Oakwood Estates')
+    await openAddGateSheet(user)
+    await user.type(screen.getByLabelText('Gate name'), 'Oakwood Estates')
     await user.type(screen.getByLabelText('Code'), '0451#')
     await user.click(screen.getByRole('button', { name: 'Save gate' }))
     await screen.findByRole('heading', { name: 'Oakwood Estates' })
 
-    await user.click(screen.getByRole('button', { name: 'Change code' }))
-    const input = screen.getByLabelText('New code')
+    await user.click(screen.getByRole('button', { name: 'Open Oakwood Estates' }))
+    const sheet = within(screen.getByRole('dialog'))
+    await user.click(sheet.getByRole('button', { name: 'Edit' }))
+    const input = sheet.getByLabelText('Code')
     await user.clear(input)
     await user.type(input, '9999')
-    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await user.click(sheet.getByRole('button', { name: 'Save' }))
 
-    expect(await screen.findByText('9999')).toBeInTheDocument()
-    expect(screen.getByText(/Previously 0451#/)).toBeInTheDocument()
+    expect(await sheet.findByText('9999')).toBeInTheDocument()
+    expect(sheet.getByText(/Previously 0451#/)).toBeInTheDocument()
   })
 
   it('still saves a gate when location permission is denied', async () => {
@@ -144,13 +195,16 @@ describe('App', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.type(await screen.findByLabelText('Gate name'), 'Oakwood Estates')
+    await openAddGateSheet(user)
+    await user.type(screen.getByLabelText('Gate name'), 'Oakwood Estates')
     await user.type(screen.getByLabelText('Code'), '0451#')
     await user.click(screen.getByRole('button', { name: 'Save gate' }))
 
     expect(
       await screen.findByRole('heading', { name: 'Oakwood Estates' }),
     ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Open Oakwood Estates' }))
     expect(screen.getByText('No location recorded')).toBeInTheDocument()
   })
 
@@ -203,41 +257,53 @@ describe('App', () => {
 
     render(<App />)
 
-    await screen.findByLabelText('Gate name')
+    await screen.findByRole('button', { name: '+ Add gate' })
     expect(screen.queryByText("Someone else's gate")).not.toBeInTheDocument()
   })
 
-  it('prompts to log in instead of showing the gate form when logged out', async () => {
+  it('shows the splash screen instead of the gate form when logged out', async () => {
     mockFetchRouter({ 'GET /api/me': { status: 401, body: { error: 'Unauthorized' } } })
 
     render(<App />)
 
-    expect(await screen.findByText('Log in to see your saved gates.')).toBeInTheDocument()
-    expect(screen.queryByLabelText('Gate name')).not.toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Never dig for a gate code again.' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '+ Add gate' })).not.toBeInTheDocument()
   })
 
-  it('shows the account bar after logging in, and the prompt again after logging out', async () => {
+  it('logs in via the splash screen, reaches the welcome-back confirmation, then home', async () => {
     mockFetchRouter({
       'GET /api/me': { status: 401, body: { error: 'Unauthorized' } },
       'POST /api/login': { status: 200, body: testUser },
       'POST /api/logout': { status: 204, body: null },
+      'GET /api/gates': { status: 200, body: [] },
+      'POST /api/gates': { status: 200, body: { ok: true } },
+      'GET /api/addresses': { status: 200, body: [] },
+      'POST /api/addresses': { status: 200, body: { ok: true } },
     })
 
     const user = userEvent.setup()
     render(<App />)
 
-    // Auth is a separate screen, not stacked on the gate list.
-    await user.click(await screen.findByRole('button', { name: 'Log in' }))
+    await user.click(await screen.findByRole('button', { name: 'I already have an account' }))
     await user.type(screen.getByLabelText('Email'), testUser.email)
     await user.type(screen.getByLabelText('Password'), 'correct horse battery staple')
     await user.click(screen.getByRole('button', { name: 'Log in' }))
 
-    expect(await screen.findByText(`Logged in as ${testUser.email}`)).toBeInTheDocument()
-    expect(screen.getByLabelText('Gate name')).toBeInTheDocument()
+    // Login skips the save-first-gate step entirely and lands on "Welcome back."
+    expect(await screen.findByRole('heading', { name: 'Welcome back.' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Enter Sesame' }))
 
+    expect(await screen.findByRole('heading', { name: 'Your gates' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '+ Add gate' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Account menu' }))
     await user.click(screen.getByRole('button', { name: 'Log out' }))
 
-    expect(await screen.findByText('Log in to see your saved gates.')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Never dig for a gate code again.' }),
+    ).toBeInTheDocument()
   })
 
   it('stays logged in offline using the cached identity, even when /api/me is unreachable', async () => {
@@ -249,23 +315,93 @@ describe('App', () => {
 
     render(<App />)
 
-    expect(await screen.findByLabelText('Gate name')).toBeInTheDocument()
-    expect(screen.queryByText('Log in to see your saved gates.')).not.toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '+ Add gate' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'Never dig for a gate code again.' }),
+    ).not.toBeInTheDocument()
   })
 
-  it('returns to the logged-out prompt without logging in when Back is clicked', async () => {
+  it('returns to the splash screen without logging in when Back is clicked', async () => {
     mockFetchRouter({ 'GET /api/me': { status: 401, body: { error: 'Unauthorized' } } })
 
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(await screen.findByRole('button', { name: 'Log in' }))
+    await user.click(await screen.findByRole('button', { name: 'I already have an account' }))
     expect(screen.getByLabelText('Email')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '← Back' }))
 
     expect(screen.queryByLabelText('Email')).not.toBeInTheDocument()
-    expect(screen.getByText('Log in to see your saved gates.')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Never dig for a gate code again.' }),
+    ).toBeInTheDocument()
+  })
+
+  it('completes register → save first gate → confirmation → home', async () => {
+    mockFetchRouter({
+      'GET /api/me': { status: 401, body: { error: 'Unauthorized' } },
+      'POST /api/register': { status: 201, body: testUser },
+      'GET /api/gates': { status: 200, body: [] },
+      'POST /api/gates': { status: 200, body: { ok: true } },
+      'GET /api/addresses': { status: 200, body: [] },
+      'POST /api/addresses': { status: 200, body: { ok: true } },
+    })
+
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: 'Get started' }))
+    expect(screen.getByText('Step 1 of 3')).toBeInTheDocument()
+    await user.type(screen.getByLabelText('Email'), testUser.email)
+    await user.type(screen.getByLabelText('Password'), 'correct horse battery staple')
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Save your first gate' }),
+    ).toBeInTheDocument()
+    await user.type(screen.getByLabelText('Gate name'), 'Oakwood Estates')
+    await user.type(screen.getByLabelText('Code'), '0451#')
+    await user.click(screen.getByRole('button', { name: 'Save gate' }))
+
+    expect(await screen.findByRole('heading', { name: "You're all set." })).toBeInTheDocument()
+    expect(screen.getByText('Oakwood Estates')).toBeInTheDocument()
+    expect(screen.getByText('0451#')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Enter Sesame' }))
+
+    expect(await screen.findByRole('heading', { name: 'Your gates' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Open Oakwood Estates' }),
+    ).toBeInTheDocument()
+  })
+
+  it('completes register → skip first gate → confirmation → home', async () => {
+    mockFetchRouter({
+      'GET /api/me': { status: 401, body: { error: 'Unauthorized' } },
+      'POST /api/register': { status: 201, body: testUser },
+      'GET /api/gates': { status: 200, body: [] },
+      'POST /api/gates': { status: 200, body: { ok: true } },
+      'GET /api/addresses': { status: 200, body: [] },
+      'POST /api/addresses': { status: 200, body: { ok: true } },
+    })
+
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: 'Get started' }))
+    await user.type(screen.getByLabelText('Email'), testUser.email)
+    await user.type(screen.getByLabelText('Password'), 'correct horse battery staple')
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+
+    await user.click(await screen.findByRole('button', { name: 'Skip this step' }))
+
+    expect(await screen.findByRole('heading', { name: "You're all set." })).toBeInTheDocument()
+    expect(screen.getByText("Add a gate whenever you're ready.")).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Enter Sesame' }))
+
+    expect(await screen.findByRole('heading', { name: 'Your gates' })).toBeInTheDocument()
   })
 
   it('pulls gates from the server on login, restoring what local storage lost', async () => {
@@ -294,7 +430,8 @@ describe('App', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.type(await screen.findByLabelText('Gate name'), 'Oakwood Estates')
+    await openAddGateSheet(user)
+    await user.type(screen.getByLabelText('Gate name'), 'Oakwood Estates')
     await user.type(screen.getByLabelText('Code'), '0451#')
     await user.click(screen.getByRole('button', { name: 'Save gate' }))
 
