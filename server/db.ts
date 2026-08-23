@@ -17,5 +17,11 @@ export function createPool(): Pool {
   if (!connectionString) {
     throw new Error('DATABASE_URL is not set')
   }
-  return new Pool({ connectionString })
+  // Hosted Postgres (Railway, Render, etc.) commonly presents a certificate
+  // that isn't in Node's trust store — rejectUnauthorized: false accepts it
+  // without verifying the chain, the standard trade-off for these providers
+  // (the connection is still encrypted, just not certificate-pinned). Local
+  // dev Postgres has no TLS listener at all, so SSL must stay off there.
+  const ssl = process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined
+  return new Pool({ connectionString, ssl })
 }
