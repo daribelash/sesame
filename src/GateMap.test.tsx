@@ -87,7 +87,7 @@ afterEach(() => {
 describe('GateMap', () => {
   it('shows the offline fallback without mounting the map SDK', () => {
     setOnLine(false)
-    render(<GateMap gates={[]} addressesByGate={new Map()} onCreateGateAt={vi.fn()} />)
+    render(<GateMap gates={[]} onOpenDetail={vi.fn()} onCreateGateAt={vi.fn()} />)
 
     expect(screen.getByText('Map needs an internet connection')).toBeInTheDocument()
     expect(screen.queryByTestId('api-provider')).not.toBeInTheDocument()
@@ -99,29 +99,41 @@ describe('GateMap', () => {
       makeGate({ id: 'g2', name: 'Cedar Ridge', lat: 32.6, lng: -96.6 }),
       makeGate({ id: 'g3', name: 'No location', lat: null, lng: null }),
     ]
-    render(<GateMap gates={gates} addressesByGate={new Map()} onCreateGateAt={vi.fn()} />)
+    render(<GateMap gates={gates} onOpenDetail={vi.fn()} onCreateGateAt={vi.fn()} />)
 
     expect(screen.getByRole('button', { name: 'Open Oakwood Estates on the map' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Open Cedar Ridge on the map' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /No location/ })).not.toBeInTheDocument()
   })
 
-  it('shows an info window with the code when a marker is clicked', async () => {
+  it('shows a popup with the name and code when a marker is clicked', async () => {
     const gates = [makeGate({ id: 'g1', name: 'Oakwood Estates', code: '0451#' })]
     const user = userEvent.setup()
-    render(<GateMap gates={gates} addressesByGate={new Map()} onCreateGateAt={vi.fn()} />)
+    render(<GateMap gates={gates} onOpenDetail={vi.fn()} onCreateGateAt={vi.fn()} />)
 
     await user.click(screen.getByRole('button', { name: 'Open Oakwood Estates on the map' }))
 
-    const dialog = screen.getByRole('dialog')
-    expect(dialog).toHaveTextContent('Oakwood Estates')
-    expect(dialog).toHaveTextContent('0451#')
+    const popup = screen.getByRole('dialog')
+    expect(popup).toHaveTextContent('Oakwood Estates')
+    expect(popup).toHaveTextContent('0451#')
+  })
+
+  it('opens the gate detail sheet when the popup link is clicked', async () => {
+    const gates = [makeGate({ id: 'g1', name: 'Oakwood Estates' })]
+    const onOpenDetail = vi.fn()
+    const user = userEvent.setup()
+    render(<GateMap gates={gates} onOpenDetail={onOpenDetail} onCreateGateAt={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: 'Open Oakwood Estates on the map' }))
+    await user.click(screen.getByRole('button', { name: 'Open gate →' }))
+
+    expect(onOpenDetail).toHaveBeenCalledWith('g1')
   })
 
   it('calls onCreateGateAt after a long press on empty map space', () => {
     vi.useFakeTimers()
     const onCreateGateAt = vi.fn()
-    render(<GateMap gates={[]} addressesByGate={new Map()} onCreateGateAt={onCreateGateAt} />)
+    render(<GateMap gates={[]} onOpenDetail={vi.fn()} onCreateGateAt={onCreateGateAt} />)
 
     fakeMapDiv.dispatchEvent(
       new PointerEvent('pointerdown', { clientX: 150, clientY: 150, bubbles: true }),
@@ -137,7 +149,7 @@ describe('GateMap', () => {
   it('cancels the long press if the pointer moves before the threshold', () => {
     vi.useFakeTimers()
     const onCreateGateAt = vi.fn()
-    render(<GateMap gates={[]} addressesByGate={new Map()} onCreateGateAt={onCreateGateAt} />)
+    render(<GateMap gates={[]} onOpenDetail={vi.fn()} onCreateGateAt={onCreateGateAt} />)
 
     fakeMapDiv.dispatchEvent(
       new PointerEvent('pointerdown', { clientX: 150, clientY: 150, bubbles: true }),

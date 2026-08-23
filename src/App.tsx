@@ -326,7 +326,7 @@ function App() {
         <MapErrorBoundary>
           <GateMap
             gates={gates}
-            addressesByGate={addressesByGate}
+            onOpenDetail={setActiveGateId}
             onCreateGateAt={(coords) => {
               setMapCreateAt(coords)
               setShowAddGate(true)

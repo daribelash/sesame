@@ -21,7 +21,7 @@ async function saveGate(page: Page, name: string, code: string) {
   await page.getByLabel('Gate name').fill(name)
   await page.getByLabel('Code').fill(code)
   await page.getByRole('button', { name: 'Save gate' }).click()
-  await expect(page.getByRole('heading', { name })).toBeVisible()
+  await expect(page.getByRole('button', { name: `Open ${name}` }).first()).toBeVisible()
 }
 
 test('a saved gate shows a marker on the map', async ({ page, context }) => {
@@ -37,9 +37,14 @@ test('a saved gate shows a marker on the map', async ({ page, context }) => {
   ).toBeVisible()
 
   await page.getByRole('button', { name: 'Open Oakwood Estates on the map' }).click()
-  const infoWindow = page.getByRole('dialog').last()
-  await expect(infoWindow).toContainText('Oakwood Estates')
-  await expect(infoWindow).toContainText('0451#')
+  const popup = page.getByRole('dialog').last()
+  await expect(popup).toContainText('Oakwood Estates')
+  await expect(popup).toContainText('0451#')
+
+  await popup.getByRole('button', { name: 'Open gate →' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Oakwood Estates' })
+  await expect(sheet).toBeVisible()
+  await expect(sheet).toContainText('0451#')
 })
 
 test('long-pressing empty map space opens a prefilled add-gate sheet', async ({
@@ -75,7 +80,10 @@ test('dragging a marker in the detail sheet persists the new location', async ({
   await registerAccount(page)
   await saveGate(page, 'Oakwood Estates', '0451#')
 
-  await page.getByRole('button', { name: 'Open Oakwood Estates' }).click()
+  // The gate now also appears in the "Nearby"/"Recently added" snapshots,
+  // whose rows share this same accessible name — .first() targets the main
+  // list card specifically, matching this test's original intent.
+  await page.getByRole('button', { name: 'Open Oakwood Estates' }).first().click()
   const originalLocation = await page.locator('.sheet .location').textContent()
 
   await page.getByRole('button', { name: 'Adjust location on map' }).click()
@@ -90,7 +98,7 @@ test('dragging a marker in the detail sheet persists the new location', async ({
   await page.mouse.up()
 
   await page.reload()
-  await page.getByRole('button', { name: 'Open Oakwood Estates' }).click()
+  await page.getByRole('button', { name: 'Open Oakwood Estates' }).first().click()
   const updatedLocation = await page.locator('.sheet .location').textContent()
   expect(updatedLocation).not.toBe(originalLocation)
 })

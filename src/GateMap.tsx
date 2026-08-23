@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { APIProvider, AdvancedMarker, InfoWindow, Map, useMap } from '@vis.gl/react-google-maps'
 import type { Gate } from './repository'
-import type { Address } from './addressRepository'
 import type { Coordinates } from './distance'
 import { buildGateIcon } from './gateMarkerIcon'
 import { interpolateLatLng } from './mapProjection'
@@ -10,7 +9,7 @@ import { useOnlineStatus } from './useOnlineStatus'
 interface GateMapProps {
   /** All gates, unfiltered by radius — a map is its own spatial filter. */
   gates: Gate[]
-  addressesByGate: Map<string, Address[]>
+  onOpenDetail: (gateId: string) => void
   onCreateGateAt: (coords: Coordinates) => void
 }
 
@@ -28,7 +27,7 @@ const LOCATED_ZOOM = 13
 // (CLAUDE.md). Rather than let the SDK fail unpredictably offline, check
 // navigator.onLine explicitly and show a plain, honest fallback instead of
 // attempting to mount anything.
-export function GateMap({ gates, addressesByGate, onCreateGateAt }: GateMapProps) {
+export function GateMap({ gates, onOpenDetail, onCreateGateAt }: GateMapProps) {
   const online = useOnlineStatus()
 
   if (!online) {
@@ -50,7 +49,7 @@ export function GateMap({ gates, addressesByGate, onCreateGateAt }: GateMapProps
         center={center}
         zoom={zoom}
         located={located}
-        addressesByGate={addressesByGate}
+        onOpenDetail={onOpenDetail}
         onCreateGateAt={onCreateGateAt}
       />
     </APIProvider>
@@ -61,11 +60,11 @@ interface GateMapViewProps {
   center: Coordinates
   zoom: number
   located: Gate[]
-  addressesByGate: Map<string, Address[]>
+  onOpenDetail: (gateId: string) => void
   onCreateGateAt: (coords: Coordinates) => void
 }
 
-function GateMapView({ center, zoom, located, addressesByGate, onCreateGateAt }: GateMapViewProps) {
+function GateMapView({ center, zoom, located, onOpenDetail, onCreateGateAt }: GateMapViewProps) {
   const [pressPoint, setPressPoint] = useState<{ x: number; y: number } | null>(null)
 
   return (
@@ -79,11 +78,7 @@ function GateMapView({ center, zoom, located, addressesByGate, onCreateGateAt }:
       >
         <LongPressToCreate onCreateGateAt={onCreateGateAt} onPressPointChange={setPressPoint} />
         {located.map((gate) => (
-          <GatePin
-            key={gate.id}
-            gate={gate}
-            addressCount={(addressesByGate.get(gate.id) ?? []).length}
-          />
+          <GatePin key={gate.id} gate={gate} onOpenDetail={onOpenDetail} />
         ))}
       </Map>
       {pressPoint && (
@@ -97,23 +92,29 @@ function GateMapView({ center, zoom, located, addressesByGate, onCreateGateAt }:
   )
 }
 
-function GatePin({ gate, addressCount }: { gate: Gate; addressCount: number }) {
+// Tapping a pin opens a small popup — name, code, and a link to the full
+// detail sheet — rather than jumping straight there, so a quick glance at
+// the map doesn't require a full sheet takeover.
+function GatePin({ gate, onOpenDetail }: { gate: Gate; onOpenDetail: (gateId: string) => void }) {
   const [open, setOpen] = useState(false)
-  const icon = buildGateIcon(addressCount, gate.failedAt != null)
+  const icon = buildGateIcon(gate.failedAt != null)
   const position = { lat: gate.lat!, lng: gate.lng! }
+  const flagged = gate.failedAt != null
 
   return (
     <>
       <AdvancedMarker position={position} onClick={() => setOpen(true)}>
-        <div className={icon.className} aria-label={`Open ${gate.name} on the map`}>
-          {icon.label}
-        </div>
+        <div className={icon.className} aria-label={`Open ${gate.name} on the map`} />
       </AdvancedMarker>
       {open && (
         <InfoWindow position={position} onCloseClick={() => setOpen(false)}>
-          <strong>{gate.name}</strong>
-          <p className="code">{gate.code}</p>
-          {gate.failedAt != null && <p>⚠ Reported not working</p>}
+          <div className="map-pin-popup">
+            <p className="map-pin-popup-name">{gate.name}</p>
+            <p className={flagged ? 'code code--flagged' : 'code'}>{gate.code}</p>
+            <button type="button" className="link-button" onClick={() => onOpenDetail(gate.id)}>
+              Open gate →
+            </button>
+          </div>
         </InfoWindow>
       )}
     </>
