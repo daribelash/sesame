@@ -205,7 +205,8 @@ button:hover {
   align-items: center;
   gap: 8px;
   margin: 8px 0;
-  font-size: 14px;
+  font-size: 12px;
+  opacity: 0.8;
 }
 
 .sheet-backdrop {
@@ -271,6 +272,7 @@ button:hover {
 
 .sheet-header h2 {
   margin: 0;
+  font-size: 18px;
 }
 
 .update-code-form {
@@ -304,6 +306,12 @@ button:hover {
 
 .sheet .notes {
   margin: 0 0 8px;
+  font-size: 13px;
+  opacity: 0.75;
+}
+
+.sheet .error-chip {
+  font-weight: 600;
 }
 
 .sheet .distance {
@@ -662,7 +670,7 @@ button:hover {
   flex-wrap: wrap;
   align-items: baseline;
   gap: 8px;
-  font-size: 14px;
+  font-size: 13px;
   border-top: 1px solid var(--border);
   padding-top: 8px;
 }
@@ -736,11 +744,11 @@ button:hover {
 }
 
 .step-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--accent);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent-700);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.1em;
   margin: 0 0 4px;
 }
 
