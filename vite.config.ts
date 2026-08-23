@@ -14,8 +14,8 @@ export default defineConfig({
         name: 'Sesame',
         short_name: 'Sesame',
         description: 'Gated-community access codes, retrieved by GPS proximity.',
-        theme_color: '#aa3bff',
-        background_color: '#ffffff',
+        theme_color: '#3e7c5a',
+        background_color: '#f2efe6',
         display: 'standalone',
         start_url: '/',
         icons: [
@@ -32,7 +32,9 @@ export default defineConfig({
       },
       workbox: {
         // Precache the app shell so it opens with no signal (CLAUDE.md: PWA sprint).
-        globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+        // woff2 covers the self-hosted Archivo font — no runtime font fetch, so
+        // text still renders correctly offline.
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
       },
     }),
   ],
