@@ -13,6 +13,7 @@ function makeGate(overrides: Partial<Gate> & { id: string; updatedAt: string }):
     createdAt: overrides.updatedAt,
     deletedAt: null,
     codeHistory: [],
+    failedAt: null,
     ...overrides,
   }
 }
@@ -49,6 +50,26 @@ describe('reconcile', () => {
   it('local-newer: pushes the local copy', () => {
     const local = makeGate({ id: '1', code: '2222', updatedAt: '2026-01-02T00:00:00.000Z' })
     const remote = makeGate({ id: '1', code: '1111', updatedAt: '2026-01-01T00:00:00.000Z' })
+
+    const result = reconcile([local], [remote])
+
+    expect(result.toPush).toEqual([local])
+    expect(result.toApplyLocally).toEqual([])
+  })
+
+  it('flag-only local edit: a newer failedAt-only change still wins over remote', () => {
+    const local = makeGate({
+      id: '1',
+      code: '1111',
+      failedAt: '2026-01-02T00:00:00.000Z',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+    })
+    const remote = makeGate({
+      id: '1',
+      code: '1111',
+      failedAt: null,
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    })
 
     const result = reconcile([local], [remote])
 

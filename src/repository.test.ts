@@ -80,6 +80,7 @@ describe('reading legacy data', () => {
     const gates = createGateRepository(userId).listGates()
 
     expect(gates[0].codeHistory).toEqual([])
+    expect(gates[0].failedAt).toBeNull()
   })
 })
 
@@ -145,6 +146,62 @@ describe('updateGate', () => {
 
     expect(updated?.code).toBe('0451#')
     expect(updated?.codeHistory).toEqual([])
+  })
+
+  it('clears a previously-set failedAt when the code changes', () => {
+    const repo = createGateRepository(userId)
+    const gate = repo.createGate({ name: 'Oakwood Estates', code: '0451#', notes: '' })
+    repo.markCodeFailed(gate.id)
+
+    const updated = repo.updateGate(gate.id, { code: '9999' })
+
+    expect(updated?.failedAt).toBeNull()
+  })
+
+  it('leaves failedAt untouched when the code is unchanged', () => {
+    const repo = createGateRepository(userId)
+    const gate = repo.createGate({ name: 'Oakwood Estates', code: '0451#', notes: '' })
+    const flagged = repo.markCodeFailed(gate.id)
+
+    const updated = repo.updateGate(gate.id, { notes: 'still flagged' })
+
+    expect(updated?.failedAt).toBe(flagged?.failedAt)
+  })
+})
+
+describe('markCodeFailed', () => {
+  it('sets failedAt and bumps updatedAt', async () => {
+    const repo = createGateRepository(userId)
+    const gate = repo.createGate({ name: 'Oakwood Estates', code: '0451#', notes: '' })
+
+    await new Promise((resolve) => setTimeout(resolve, 2))
+    const flagged = repo.markCodeFailed(gate.id)
+
+    expect(flagged?.failedAt).toBeTruthy()
+    expect(flagged?.updatedAt).not.toBe(gate.updatedAt)
+    expect(flagged?.codeHistory).toEqual([])
+  })
+
+  it('returns undefined for an id that does not exist', () => {
+    expect(createGateRepository(userId).markCodeFailed('missing-id')).toBeUndefined()
+  })
+})
+
+describe('clearCodeFailed', () => {
+  it('clears failedAt and bumps updatedAt', async () => {
+    const repo = createGateRepository(userId)
+    const gate = repo.createGate({ name: 'Oakwood Estates', code: '0451#', notes: '' })
+    const flagged = repo.markCodeFailed(gate.id)
+
+    await new Promise((resolve) => setTimeout(resolve, 2))
+    const cleared = repo.clearCodeFailed(gate.id)
+
+    expect(cleared?.failedAt).toBeNull()
+    expect(cleared?.updatedAt).not.toBe(flagged?.updatedAt)
+  })
+
+  it('returns undefined for an id that does not exist', () => {
+    expect(createGateRepository(userId).clearCodeFailed('missing-id')).toBeUndefined()
   })
 })
 
@@ -212,6 +269,7 @@ describe('applyRemoteGates', () => {
       updatedAt: new Date().toISOString(),
       deletedAt: null,
       codeHistory: [],
+      failedAt: null,
     }
 
     repo.applyRemoteGates([fromServer])

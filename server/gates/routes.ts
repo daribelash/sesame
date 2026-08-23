@@ -20,6 +20,7 @@ interface ClientGate {
   updatedAt: string
   deletedAt: string | null
   codeHistory: ClientCodeHistoryEntry[]
+  failedAt: string | null
 }
 
 interface GateRow {
@@ -33,6 +34,7 @@ interface GateRow {
   created_at: Date
   updated_at: Date
   deleted_at: Date | null
+  failed_at: Date | null
 }
 
 interface CodeHistoryRow {
@@ -55,6 +57,7 @@ function toClientGate(row: GateRow, codeHistory: ClientCodeHistoryEntry[]): Clie
     updatedAt: row.updated_at.toISOString(),
     deletedAt: row.deleted_at ? row.deleted_at.toISOString() : null,
     codeHistory,
+    failedAt: row.failed_at ? row.failed_at.toISOString() : null,
   }
 }
 
@@ -66,7 +69,7 @@ export function registerGateRoutes(app: FastifyInstance, db: Queryable): void {
 
     const [gates, history] = await Promise.all([
       db.query<GateRow>(
-        `select id, name, code, notes, lat, lng, accuracy, created_at, updated_at, deleted_at
+        `select id, name, code, notes, lat, lng, accuracy, created_at, updated_at, deleted_at, failed_at
          from gates where user_id = $1`,
         [userId],
       ),
@@ -111,8 +114,8 @@ export function registerGateRoutes(app: FastifyInstance, db: Queryable): void {
       // a gate id colliding with another account's silently no-ops rather
       // than hijacking it.
       await db.query(
-        `insert into gates (id, user_id, name, code, lat, lng, accuracy, notes, created_at, updated_at, deleted_at)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        `insert into gates (id, user_id, name, code, lat, lng, accuracy, notes, created_at, updated_at, deleted_at, failed_at)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          on conflict (id) do update set
            name = excluded.name,
            code = excluded.code,
@@ -121,7 +124,8 @@ export function registerGateRoutes(app: FastifyInstance, db: Queryable): void {
            accuracy = excluded.accuracy,
            notes = excluded.notes,
            updated_at = excluded.updated_at,
-           deleted_at = excluded.deleted_at
+           deleted_at = excluded.deleted_at,
+           failed_at = excluded.failed_at
          where gates.user_id = $2`,
         [
           gate.id,
@@ -135,6 +139,7 @@ export function registerGateRoutes(app: FastifyInstance, db: Queryable): void {
           gate.createdAt,
           gate.updatedAt,
           gate.deletedAt,
+          gate.failedAt,
         ],
       )
 

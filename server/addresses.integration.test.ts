@@ -60,6 +60,7 @@ function makeClientGate(overrides: Partial<Record<string, unknown>> = {}) {
     updatedAt: now,
     deletedAt: null,
     codeHistory: [],
+    failedAt: null,
     ...overrides,
   }
 }

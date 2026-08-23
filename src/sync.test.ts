@@ -18,6 +18,7 @@ function makeGate(overrides: Partial<Gate> & { id: string; updatedAt: string }):
     createdAt: overrides.updatedAt,
     deletedAt: null,
     codeHistory: [],
+    failedAt: null,
     ...overrides,
   }
 }
@@ -28,6 +29,8 @@ function fakeRepo(local: Gate[]): GateRepository & { applied: Gate[] } {
     listGates: () => local,
     createGate: vi.fn(),
     updateGate: vi.fn(),
+    markCodeFailed: vi.fn(),
+    clearCodeFailed: vi.fn(),
     deleteGate: vi.fn(),
     exportGates: () => local,
     applyRemoteGates: (gates) => applied.push(...gates),

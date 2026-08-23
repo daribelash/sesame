@@ -27,17 +27,28 @@ export interface Gate {
   deletedAt: string | null
   /** Newest first. Superseded codes are kept, never overwritten. */
   codeHistory: CodeHistoryEntry[]
+  /** When this gate's current code was flagged as not working, or null if
+   * it isn't flagged. Cleared automatically whenever the code next changes. */
+  failedAt: string | null
 }
 
 export type NewGateInput = Pick<Gate, 'name' | 'code' | 'notes'> &
   Partial<Pick<Gate, 'lat' | 'lng' | 'accuracy'>>
-export type GateUpdateInput = Partial<Pick<Gate, 'name' | 'code' | 'notes'>>
+export type GateUpdateInput = Partial<
+  Pick<Gate, 'name' | 'code' | 'notes' | 'lat' | 'lng' | 'accuracy'>
+>
 
 export interface GateRepository {
   /** All non-deleted gates, most recently created first. */
   listGates(): Gate[]
   createGate(input: NewGateInput): Gate
   updateGate(id: string, changes: GateUpdateInput): Gate | undefined
+  /** Flags the gate's current code as not working. Cleared automatically the
+   * next time the code changes via updateGate. */
+  markCodeFailed(id: string): Gate | undefined
+  /** Clears the flag directly — the code turned out fine after all, or it
+   * was flagged by mistake. */
+  clearCodeFailed(id: string): Gate | undefined
   deleteGate(id: string): void
   /** Every gate, including soft-deleted tombstones — used by sync to reconcile. */
   exportGates(): Gate[]
@@ -60,7 +71,11 @@ export function createGateRepository(userId: string): GateRepository {
     // normalize here so every caller can trust the shape, rather than every
     // reader needing to guard against a stale local record.
     const parsed = JSON.parse(raw) as Gate[]
-    return parsed.map((gate) => ({ ...gate, codeHistory: gate.codeHistory ?? [] }))
+    return parsed.map((gate) => ({
+      ...gate,
+      codeHistory: gate.codeHistory ?? [],
+      failedAt: gate.failedAt ?? null,
+    }))
   }
 
   function writeAll(gates: Gate[]): void {
@@ -88,6 +103,7 @@ export function createGateRepository(userId: string): GateRepository {
         updatedAt: now,
         deletedAt: null,
         codeHistory: [],
+        failedAt: null,
       }
       writeAll([...readAll(), gate])
       return gate
@@ -111,8 +127,36 @@ export function createGateRepository(userId: string): GateRepository {
               ...existing.codeHistory,
             ]
           : existing.codeHistory,
+        // A code change means whatever "not working" state applied to the old
+        // code no longer means anything — clear it rather than carry a stale
+        // flag forward onto a code that's never been tried.
+        failedAt: codeChanged ? null : existing.failedAt,
         updatedAt: now,
       }
+      gates[index] = updated
+      writeAll(gates)
+      return updated
+    },
+
+    markCodeFailed(id) {
+      const gates = readAll()
+      const index = gates.findIndex((gate) => gate.id === id)
+      if (index === -1) return undefined
+
+      const now = new Date().toISOString()
+      const updated: Gate = { ...gates[index], failedAt: now, updatedAt: now }
+      gates[index] = updated
+      writeAll(gates)
+      return updated
+    },
+
+    clearCodeFailed(id) {
+      const gates = readAll()
+      const index = gates.findIndex((gate) => gate.id === id)
+      if (index === -1) return undefined
+
+      const now = new Date().toISOString()
+      const updated: Gate = { ...gates[index], failedAt: null, updatedAt: now }
       gates[index] = updated
       writeAll(gates)
       return updated

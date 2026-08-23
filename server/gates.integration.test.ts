@@ -60,6 +60,7 @@ function makeClientGate(overrides: Partial<Record<string, unknown>> = {}) {
     updatedAt: now,
     deletedAt: null,
     codeHistory: [],
+    failedAt: null,
     ...overrides,
   }
 }
@@ -126,6 +127,32 @@ describe('POST /api/gates then GET /api/gates', () => {
     const [pulled] = pullResponse.json() as { code: string; codeHistory: { code: string }[] }[]
     expect(pulled.code).toBe('9999')
     expect(pulled.codeHistory.map((entry) => entry.code)).toEqual(['0451#'])
+  })
+
+  it('round-trips a flagged failedAt, and nulls it on a code-changing push', async () => {
+    const app = buildApp(client)
+    const { cookie } = await registerAndGetCookie(app, 'driver@example.com')
+    const gate = makeClientGate({ failedAt: new Date().toISOString() })
+
+    await app.inject({ method: 'POST', url: '/api/gates', headers: { cookie }, payload: [gate] })
+    const flaggedPull = await app.inject({ method: 'GET', url: '/api/gates', headers: { cookie } })
+    expect((flaggedPull.json() as { failedAt: string | null }[])[0].failedAt).toBe(gate.failedAt)
+
+    const codeChanged = {
+      ...gate,
+      code: '9999',
+      failedAt: null,
+      updatedAt: new Date(Date.now() + 1000).toISOString(),
+    }
+    await app.inject({
+      method: 'POST',
+      url: '/api/gates',
+      headers: { cookie },
+      payload: [codeChanged],
+    })
+
+    const clearedPull = await app.inject({ method: 'GET', url: '/api/gates', headers: { cookie } })
+    expect((clearedPull.json() as { failedAt: string | null }[])[0].failedAt).toBeNull()
   })
 
   it('upserts on a second push with the same id', async () => {
