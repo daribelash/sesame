@@ -177,7 +177,7 @@ describe('GateDetailSheet', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'Delete gate' }))
-    await user.click(screen.getByRole('button', { name: 'Confirm delete' }))
+    await user.click(screen.getByRole('button', { name: 'Confirm' }))
 
     expect(onDeleteGate).toHaveBeenCalledWith('gate-1')
   })
@@ -210,7 +210,7 @@ describe('GateDetailSheet', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'Delete address' }))
-    await user.click(screen.getByRole('button', { name: 'Confirm delete' }))
+    await user.click(screen.getByRole('button', { name: 'Confirm' }))
 
     expect(onDeleteAddress).toHaveBeenCalledWith('addr-1')
   })

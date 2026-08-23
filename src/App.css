@@ -65,11 +65,6 @@ button:hover {
   flex: 1;
 }
 
-.btn-row .delete-confirm {
-  display: flex;
-  gap: 8px;
-}
-
 .btn-ghost {
   background: none;
   color: var(--accent-700);
@@ -220,6 +215,42 @@ button:hover {
   display: flex;
   align-items: flex-end;
   z-index: 10;
+}
+
+/* Stacks above .sheet-backdrop (z-index: 10) since a gate delete is
+   confirmed from inside the already-open detail sheet. */
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+  z-index: 20;
+}
+
+.confirm-dialog {
+  width: 100%;
+  max-width: 320px;
+  background: var(--surface);
+  box-shadow: var(--elev-lg);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.confirm-dialog h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: var(--text-h);
+}
+
+.confirm-dialog p {
+  margin: 0 0 20px;
+  font-size: 14px;
+  color: var(--text);
 }
 
 .sheet {
@@ -468,10 +499,6 @@ button:hover {
   font-size: 14px;
 }
 
-.link-button.danger {
-  color: var(--warn);
-}
-
 .block-link {
   display: block;
   margin: 8px 0;
@@ -479,12 +506,6 @@ button:hover {
 
 .btn-danger {
   background: var(--warn);
-}
-
-.delete-confirm {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .icon-button-delete {

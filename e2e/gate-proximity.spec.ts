@@ -87,7 +87,7 @@ test('deleting a gate removes it, and it stays gone after reload', async ({ brow
 
   await page.getByRole('button', { name: 'Open Oakwood Estates' }).click()
   await page.getByRole('button', { name: 'Delete gate' }).click()
-  await page.getByRole('button', { name: 'Confirm delete' }).click()
+  await page.getByRole('button', { name: 'Confirm' }).click()
   await expect(page.getByRole('heading', { name: 'Oakwood Estates' })).not.toBeVisible()
 
   await page.reload()

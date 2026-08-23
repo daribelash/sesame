@@ -119,7 +119,9 @@ export function GateDetailSheet({
                 {address.notes && ` — ${address.notes}`}
                 <DeleteButton
                   label="Delete address"
-                  variant="icon"
+                  trigger="icon"
+                  title="Remove this address?"
+                  description={`"${address.address}" will no longer be linked to this gate. The gate and its code stay saved.`}
                   onConfirm={() => onDeleteAddress(address.id)}
                 />
               </li>
@@ -198,7 +200,8 @@ export function GateDetailSheet({
           )}
           <DeleteButton
             label="Delete gate"
-            variant="outline"
+            title="Delete this gate?"
+            description={`"${gate.name}" and its saved code will be removed from this device. This can't be undone.`}
             onConfirm={() => onDeleteGate(gate.id)}
             onArmedChange={setDeleteArmed}
           />
