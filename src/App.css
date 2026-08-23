@@ -160,52 +160,6 @@ button:hover {
   flex-shrink: 0;
 }
 
-.gate-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.gate-card {
-  display: block;
-  width: 100%;
-  text-align: left;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--surface);
-  box-shadow: var(--elev-sm);
-  padding: 16px;
-  color: inherit;
-}
-
-.gate-card-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.gate-card-header h2 {
-  font-size: 15px;
-  margin: 0;
-}
-
-.gate-card-header .distance {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--accent-700);
-  white-space: nowrap;
-}
-
-.gate-card-meta {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--text);
-}
-
 .code {
   font-family: var(--mono);
   font-size: 22px;
@@ -219,17 +173,6 @@ button:hover {
 }
 
 .code--flagged {
-  color: var(--warn);
-}
-
-.failed-badge {
-  margin-top: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--warn);
-}
-
-.failed-badge svg {
   color: var(--warn);
 }
 
@@ -482,22 +425,6 @@ button:hover {
   margin: 0 0 4px;
 }
 
-.radius-filter {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.radius-filter select {
-  font: inherit;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg);
-  color: var(--text-h);
-}
-
 .data-tools {
   display: flex;
   align-items: center;
@@ -708,13 +635,16 @@ button:hover {
 }
 
 .gate-snapshot-list li {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.gate-snapshot-list .search-result {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 8px;
   font-size: 13px;
-  border-top: 1px solid var(--border);
-  padding-top: 8px;
 }
 
 .gate-snapshot-name {
@@ -723,6 +653,49 @@ button:hover {
 }
 
 .gate-snapshot-meta {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.gate-snapshot--card .gate-snapshot-list {
+  gap: 12px;
+}
+
+.gate-snapshot--card .gate-snapshot-list li {
+  border-top: none;
+  padding-top: 0;
+}
+
+.gate-snapshot--card .search-result {
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--elev-sm);
+  padding: 16px;
+}
+
+.gate-card-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.gate-card-header h2 {
+  font-size: 15px;
+  margin: 0;
+}
+
+.gate-card-header .distance {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-700);
+  white-space: nowrap;
+}
+
+.gate-card-meta {
+  margin: 4px 0 0;
   font-size: 13px;
   color: var(--text);
 }

@@ -64,11 +64,11 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Save gate' }))
 
     const card = (
-      await screen.findByRole('button', { name: 'Open Oakwood Estates' })
+      (await screen.findAllByRole('button', { name: 'Open Oakwood Estates' }))[0]
     ).closest('li')!
     expect(within(card).getByText('0451#')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Open Oakwood Estates' }))
+    await user.click(screen.getAllByRole('button', { name: 'Open Oakwood Estates' })[0])
     expect(
       within(screen.getByRole('dialog')).getByText('call box on the right'),
     ).toBeInTheDocument()
@@ -85,8 +85,8 @@ describe('App', () => {
     await user.type(screen.getByLabelText('Address (optional)'), '123 Oak Lane')
     await user.click(screen.getByRole('button', { name: 'Save gate' }))
 
-    await screen.findByRole('heading', { name: 'Oakwood Estates' })
-    await user.click(screen.getByRole('button', { name: 'Open Oakwood Estates' }))
+    await screen.findAllByRole('button', { name: 'Open Oakwood Estates' })
+    await user.click(screen.getAllByRole('button', { name: 'Open Oakwood Estates' })[0])
     expect(screen.getByText('123 Oak Lane')).toBeInTheDocument()
   })
 
@@ -100,8 +100,10 @@ describe('App', () => {
     await user.type(screen.getByLabelText('Code'), '0451#')
     await user.click(screen.getByRole('button', { name: 'Save gate' }))
 
-    await screen.findByRole('heading', { name: 'Oakwood Estates' })
-    expect(screen.getByText(/^0 addresses · updated/)).toBeInTheDocument()
+    await user.click((await screen.findAllByRole('button', { name: 'Open Oakwood Estates' }))[0])
+    expect(
+      within(screen.getByRole('dialog')).getByText(/^0 addresses · updated/),
+    ).toBeInTheDocument()
   })
 
   it('closes the sheet after a successful submit, with a blank form next time', async () => {
@@ -114,7 +116,7 @@ describe('App', () => {
     await user.type(screen.getByLabelText('Code'), '0451#')
     await user.click(screen.getByRole('button', { name: 'Save gate' }))
 
-    await screen.findByRole('heading', { name: 'Oakwood Estates' })
+    await screen.findAllByRole('button', { name: 'Open Oakwood Estates' })
     expect(screen.queryByLabelText('Gate name')).not.toBeInTheDocument()
 
     await openAddGateSheet(user)
@@ -131,9 +133,9 @@ describe('App', () => {
     await user.type(screen.getByLabelText('Gate name'), 'Oakwood Estates')
     await user.type(screen.getByLabelText('Code'), '0451#')
     await user.click(screen.getByRole('button', { name: 'Save gate' }))
-    await screen.findByRole('heading', { name: 'Oakwood Estates' })
+    await screen.findAllByRole('button', { name: 'Open Oakwood Estates' })
 
-    await user.click(screen.getByRole('button', { name: 'Open Oakwood Estates' }))
+    await user.click(screen.getAllByRole('button', { name: 'Open Oakwood Estates' })[0])
     const sheet = within(screen.getByRole('dialog'))
     await user.click(sheet.getByRole('button', { name: 'Edit' }))
     await user.clear(sheet.getByLabelText('Code'))
@@ -166,9 +168,9 @@ describe('App', () => {
     await user.type(screen.getByLabelText('Gate name'), 'Oakwood Estates')
     await user.type(screen.getByLabelText('Code'), '0451#')
     await user.click(screen.getByRole('button', { name: 'Save gate' }))
-    await screen.findByRole('heading', { name: 'Oakwood Estates' })
+    await screen.findAllByRole('button', { name: 'Open Oakwood Estates' })
 
-    await user.click(screen.getByRole('button', { name: 'Open Oakwood Estates' }))
+    await user.click(screen.getAllByRole('button', { name: 'Open Oakwood Estates' })[0])
     const sheet = within(screen.getByRole('dialog'))
     await user.click(sheet.getByRole('button', { name: 'Edit' }))
     const input = sheet.getByLabelText('Code')
@@ -201,10 +203,10 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Save gate' }))
 
     expect(
-      await screen.findByRole('heading', { name: 'Oakwood Estates' }),
+      (await screen.findAllByRole('button', { name: 'Open Oakwood Estates' }))[0],
     ).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Open Oakwood Estates' }))
+    await user.click(screen.getAllByRole('button', { name: 'Open Oakwood Estates' })[0])
     expect(screen.getByText('No location recorded')).toBeInTheDocument()
   })
 
@@ -231,7 +233,9 @@ describe('App', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'Riverbend' })).toBeInTheDocument()
+    expect(
+      (await screen.findAllByRole('button', { name: 'Open Riverbend' }))[0],
+    ).toBeInTheDocument()
   })
 
   it('never shows gates saved under a different account', async () => {
@@ -372,7 +376,7 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { name: 'Your gates' })).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'Open Oakwood Estates' }),
+      screen.getAllByRole('button', { name: 'Open Oakwood Estates' })[0],
     ).toBeInTheDocument()
   })
 
@@ -422,7 +426,9 @@ describe('App', () => {
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: 'Riverbend' })).toBeInTheDocument()
+    expect(
+      (await screen.findAllByRole('button', { name: 'Open Riverbend' }))[0],
+    ).toBeInTheDocument()
   })
 
   it('shows a quiet status while syncing, and an error note when it fails', async () => {
@@ -437,7 +443,7 @@ describe('App', () => {
 
     // The add re-triggers a sync; it resolves against the same mock, so the
     // app settles back to no visible status rather than staying stuck.
-    await screen.findByRole('heading', { name: 'Oakwood Estates' })
+    await screen.findAllByRole('button', { name: 'Open Oakwood Estates' })
     expect(screen.queryByText('Syncing…')).not.toBeInTheDocument()
     expect(screen.queryByText('Sync paused — check your connection.')).not.toBeInTheDocument()
 

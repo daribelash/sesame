@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { GateList } from './GateList'
 import { GateDetailSheet } from './GateDetailSheet'
 import type { GateEditChanges } from './GateEditForm'
 import { AddGateSheet } from './AddGateSheet'
-import { RadiusFilter } from './RadiusFilter'
 import { AuthPanel, type AuthMode } from './AuthPanel'
 import { SplashScreen } from './SplashScreen'
 import { SaveFirstGateStep } from './SaveFirstGateStep'
@@ -18,13 +16,7 @@ import {
   type Address,
   type NewAddressInput,
 } from './addressRepository'
-import {
-  selectVisibleGates,
-  selectClosestGates,
-  selectRecentGates,
-  annotateWithDistance,
-  RADIUS_OPTIONS_MILES,
-} from './gateSort'
+import { selectClosestGates, selectRecentGates, annotateWithDistance } from './gateSort'
 import { RecentGatesList } from './RecentGatesList'
 import { getCurrentFix } from './geolocation'
 import { checkSession, getCachedUser, type AuthUser } from './auth'
@@ -40,7 +32,6 @@ function App() {
   const [gates, setGates] = useState<Gate[]>([])
   const [addresses, setAddresses] = useState<Address[]>([])
   const [currentPosition, setCurrentPosition] = useState<Coordinates | null>(null)
-  const [radiusMiles, setRadiusMiles] = useState<number>(RADIUS_OPTIONS_MILES[1])
   // A returning user with a cached identity skips the first-run sequence
   // entirely and lands straight on the home screen.
   const [screen, setScreen] = useState<Screen>(() => (getCachedUser() ? 'home' : 'splash'))
@@ -201,12 +192,8 @@ function App() {
     runSync()
   }
 
-  const visibleGates = selectVisibleGates(gates, currentPosition, radiusMiles)
   const closestGates = selectClosestGates(gates, currentPosition)
   const recentGates = selectRecentGates(gates, currentPosition)
-  // Resolved from the full gate list, not the radius-filtered visibleGates —
-  // a gate opened from search, the map, or a snapshot card might not be in
-  // the currently-visible radius-filtered set.
   const activeGateRaw = activeGateId ? gates.find((gate) => gate.id === activeGateId) : undefined
   const activeGate = activeGateRaw ? annotateWithDistance(activeGateRaw, currentPosition) : undefined
 
@@ -334,14 +321,19 @@ function App() {
           />
         </MapErrorBoundary>
       </div>
-      <RadiusFilter value={radiusMiles} onChange={setRadiusMiles} />
-      <GateList
-        gates={visibleGates}
+      <RecentGatesList
+        title="Nearby"
+        gates={closestGates}
+        onOpenDetail={setActiveGateId}
+        variant="card"
         addressesByGate={addressesByGate}
+      />
+      <RecentGatesList
+        title="Recently added"
+        gates={recentGates}
+        showCreatedAt
         onOpenDetail={setActiveGateId}
       />
-      <RecentGatesList title="Nearby" gates={closestGates} />
-      <RecentGatesList title="Recently added" gates={recentGates} showCreatedAt />
       {showAddGate && (
         <AddGateSheet
           onAdd={handleAdd}

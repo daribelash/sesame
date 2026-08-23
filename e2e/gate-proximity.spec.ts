@@ -23,11 +23,13 @@ async function saveGate(page: Page, name: string, code: string) {
   await page.getByLabel('Gate name').fill(name)
   await page.getByLabel('Code').fill(code)
   await page.getByRole('button', { name: 'Save gate' }).click()
-  await expect(page.getByRole('heading', { name })).toBeVisible()
+  await expect(page.getByRole('button', { name: `Open ${name}` }).first()).toBeVisible()
 }
 
-function firstGateHeading(page: Page) {
-  return page.locator('.gate-list .gate-card h2').first()
+// There's no single "main list" anymore — the "Nearby" snapshot is the one
+// always-visible, distance-sorted view, so it's the ordering signal to check.
+function firstNearbyGateName(page: Page) {
+  return page.locator('.gate-snapshot', { hasText: 'Nearby' }).locator('.gate-snapshot-name').first()
 }
 
 test('the gate at your current position is top of the list', async ({ browser }) => {
@@ -44,7 +46,7 @@ test('the gate at your current position is top of the list', async ({ browser })
   // Reload so the app re-reads the current position used for sorting.
   await page.reload()
 
-  await expect(firstGateHeading(page)).toHaveText('Oakwood Estates')
+  await expect(firstNearbyGateName(page)).toHaveText('Oakwood Estates')
 
   await context.close()
 })
@@ -65,11 +67,11 @@ test('ordering changes when the phone moves to a different saved gate', async ({
 
   await context.setGeolocation(positionA)
   await page.reload()
-  await expect(firstGateHeading(page)).toHaveText('Oakwood Estates')
+  await expect(firstNearbyGateName(page)).toHaveText('Oakwood Estates')
 
   await context.setGeolocation(positionB)
   await page.reload()
-  await expect(firstGateHeading(page)).toHaveText('Cedar Ridge')
+  await expect(firstNearbyGateName(page)).toHaveText('Cedar Ridge')
 
   await context.close()
 })
@@ -85,13 +87,13 @@ test('deleting a gate removes it, and it stays gone after reload', async ({ brow
 
   await saveGate(page, 'Oakwood Estates', '0451#')
 
-  await page.getByRole('button', { name: 'Open Oakwood Estates' }).click()
+  await page.getByRole('button', { name: 'Open Oakwood Estates' }).first().click()
   await page.getByRole('button', { name: 'Delete gate' }).click()
   await page.getByRole('button', { name: 'Confirm' }).click()
-  await expect(page.getByRole('heading', { name: 'Oakwood Estates' })).not.toBeVisible()
+  await expect(page.getByRole('button', { name: 'Open Oakwood Estates' })).not.toBeVisible()
 
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'Oakwood Estates' })).not.toBeVisible()
+  await expect(page.getByRole('button', { name: 'Open Oakwood Estates' })).not.toBeVisible()
 
   await context.close()
 })
@@ -106,7 +108,7 @@ test('the list still renders when location permission is denied', async ({ brows
   await saveGate(page, 'Oakwood Estates', '0451#')
   await page.reload()
 
-  await expect(page.getByRole('heading', { name: 'Oakwood Estates' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Open Oakwood Estates' }).first()).toBeVisible()
 
   await context.close()
 })
