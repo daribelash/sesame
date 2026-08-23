@@ -333,30 +333,35 @@ button:hover {
 }
 
 .address-form {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 8px;
   margin: 0 0 8px;
 }
 
-.address-form .field {
-  flex: 1 1 140px;
+.address-form label {
+  display: block;
+  margin: 0 0 4px;
 }
 
-.address-form input {
+.address-form-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.address-form-row input {
+  flex: 1;
+  min-width: 0;
   font: inherit;
   padding: 6px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg);
   color: var(--text-h);
-  width: 100%;
   box-sizing: border-box;
 }
 
-.address-form button {
+.address-form-row button {
   padding: 6px 12px;
+  white-space: nowrap;
 }
 
 .address-search {

@@ -9,9 +9,7 @@ interface AddressFormProps {
 export function AddressForm({ gateId, onAdd }: AddressFormProps) {
   const [adding, setAdding] = useState(false)
   const [address, setAddress] = useState('')
-  const [notes, setNotes] = useState('')
   const addressInputId = useId()
-  const notesInputId = useId()
 
   if (!adding) {
     return (
@@ -25,39 +23,28 @@ export function AddressForm({ gateId, onAdd }: AddressFormProps) {
     event.preventDefault()
     if (!address.trim()) return
 
-    onAdd({ gateId, address: address.trim(), notes: notes.trim() })
+    onAdd({ gateId, address: address.trim(), notes: '' })
     setAddress('')
-    setNotes('')
     setAdding(false)
   }
 
   return (
     <form className="address-form" onSubmit={handleSubmit}>
-      <div className="field">
-        <label htmlFor={addressInputId}>Address</label>
+      <label htmlFor={addressInputId}>New address</label>
+      <div className="address-form-row">
         <input
           id={addressInputId}
           value={address}
           onChange={(event) => setAddress(event.target.value)}
+          placeholder="e.g. 132 Oakwood Dr"
           autoFocus
           required
         />
+        <button type="submit">Add</button>
+        <button type="button" className="link-button" onClick={() => setAdding(false)}>
+          Cancel
+        </button>
       </div>
-
-      <div className="field">
-        <label htmlFor={notesInputId}>Notes</label>
-        <input
-          id={notesInputId}
-          value={notes}
-          onChange={(event) => setNotes(event.target.value)}
-          placeholder="beige house, side door"
-        />
-      </div>
-
-      <button type="submit">Save</button>
-      <button type="button" className="link-button" onClick={() => setAdding(false)}>
-        Cancel
-      </button>
     </form>
   )
 }

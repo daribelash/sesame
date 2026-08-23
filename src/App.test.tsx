@@ -142,8 +142,8 @@ describe('App', () => {
     await sheet.findByText('9999')
 
     await user.click(sheet.getByRole('button', { name: 'Add address' }))
-    await user.type(sheet.getByLabelText('Address'), '123 Oak Lane')
-    await user.click(sheet.getByRole('button', { name: 'Save' }))
+    await user.type(sheet.getByLabelText('New address'), '123 Oak Lane')
+    await user.click(sheet.getByRole('button', { name: 'Add' }))
     await sheet.findByText('123 Oak Lane')
 
     await user.click(sheet.getByRole('button', { name: 'Close' }))
