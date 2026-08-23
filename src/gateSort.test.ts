@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { selectVisibleGates } from './gateSort'
+import { selectVisibleGates, selectClosestGates, selectRecentGates } from './gateSort'
 import type { Gate } from './repository'
 
 let idCounter = 0
@@ -18,6 +18,7 @@ function makeGate(overrides: Partial<Gate> = {}): Gate {
     updatedAt: new Date().toISOString(),
     deletedAt: null,
     codeHistory: [],
+    failedAt: null,
     ...overrides,
   }
 }
@@ -66,5 +67,36 @@ describe('selectVisibleGates', () => {
     const result = selectVisibleGates([near, far], null, 1)
     expect(result.map((gate) => gate.name)).toEqual(['Near', 'Far'])
     expect(result.every((gate) => gate.distanceMiles === null)).toBe(true)
+  })
+})
+
+describe('selectClosestGates', () => {
+  it('returns at most 5 gates, sorted nearest first', () => {
+    const gates = [far, veryVeryFar, near, mid, veryFar, makeGate({ name: 'Extra', lat: 32.02, lng: -96.0 })]
+    const result = selectClosestGates(gates, here)
+    expect(result).toHaveLength(5)
+    expect(result[0].name).toBe('Near')
+    expect(result.map((gate) => gate.distanceMiles)).toEqual(
+      [...result.map((gate) => gate.distanceMiles)].sort((a, b) => (a ?? 0) - (b ?? 0)),
+    )
+  })
+
+  it('sorts unlocated gates last rather than excluding them', () => {
+    const unlocated = makeGate({ name: 'No location' })
+    const result = selectClosestGates([unlocated, near], here)
+    expect(result.map((gate) => gate.name)).toEqual(['Near', 'No location'])
+  })
+})
+
+describe('selectRecentGates', () => {
+  it('returns at most 3 gates, newest first', () => {
+    const older = makeGate({ name: 'Older', createdAt: '2026-01-01T00:00:00.000Z' })
+    const newer = makeGate({ name: 'Newer', createdAt: '2026-01-03T00:00:00.000Z' })
+    const newest = makeGate({ name: 'Newest', createdAt: '2026-01-04T00:00:00.000Z' })
+    const middle = makeGate({ name: 'Middle', createdAt: '2026-01-02T00:00:00.000Z' })
+
+    const result = selectRecentGates([older, newer, newest, middle], null)
+
+    expect(result.map((gate) => gate.name)).toEqual(['Newest', 'Newer', 'Middle'])
   })
 })
