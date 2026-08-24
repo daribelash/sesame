@@ -17,8 +17,11 @@ jobs:
 
       - run: npm ci
 
+      # `tsc --noEmit` is a silent no-op here: the root tsconfig is
+      # `"files": []` plus project references, so it checks nothing and
+      # always exits 0. `-b` builds the referenced projects for real.
       - name: typecheck
-        run: npx tsc --noEmit
+        run: npx tsc -b
 
       - name: lint
         run: npm run lint
