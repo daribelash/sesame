@@ -20,16 +20,17 @@ async function registerAccount(page: Page) {
 
 async function saveGate(page: Page, name: string, code: string) {
   await page.getByRole('button', { name: '+ Add gate' }).click()
-  await page.getByLabel('Gate name').fill(name)
-  await page.getByLabel('Code').fill(code)
+  await page.getByLabel('Gate name', { exact: true }).fill(name)
+  await page.getByLabel('Code', { exact: true }).fill(code)
   await page.getByRole('button', { name: 'Save gate' }).click()
   await expect(page.getByRole('button', { name: `Open ${name}` }).first()).toBeVisible()
 }
 
 // There's no single "main list" anymore — the "Nearby" snapshot is the one
 // always-visible, distance-sorted view, so it's the ordering signal to check.
+// It renders as cards, so each gate's name is an <h2>.
 function firstNearbyGateName(page: Page) {
-  return page.locator('.gate-snapshot', { hasText: 'Nearby' }).locator('.gate-snapshot-name').first()
+  return page.locator('.gate-snapshot--card').locator('.gate-card-header h2').first()
 }
 
 test('the gate at your current position is top of the list', async ({ browser }) => {

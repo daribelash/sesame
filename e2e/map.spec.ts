@@ -16,10 +16,22 @@ async function registerAccount(page: Page) {
   await expect(page.getByRole('heading', { name: 'Your gates' })).toBeVisible()
 }
 
+// The gesture handlers attach to the Maps SDK's own DOM node via useMap(),
+// which is null until the SDK finishes loading — gesturing before then hits
+// a map with no listeners yet.
+async function waitForMapReady(page: Page, viewportSelector: string) {
+  // .gm-style only appears once Maps has actually constructed the map
+  // instance — unlike window.google.maps, which exists as soon as the
+  // loader script runs, well before useMap() returns anything.
+  await expect(page.locator(`${viewportSelector} .gm-style`).first()).toBeVisible({
+    timeout: 15_000,
+  })
+}
+
 async function saveGate(page: Page, name: string, code: string) {
   await page.getByRole('button', { name: '+ Add gate' }).click()
-  await page.getByLabel('Gate name').fill(name)
-  await page.getByLabel('Code').fill(code)
+  await page.getByLabel('Gate name', { exact: true }).fill(name)
+  await page.getByLabel('Code', { exact: true }).fill(code)
   await page.getByRole('button', { name: 'Save gate' }).click()
   await expect(page.getByRole('button', { name: `Open ${name}` }).first()).toBeVisible()
 }
@@ -56,6 +68,7 @@ test('long-pressing empty map space opens a prefilled add-gate sheet', async ({
 
   await page.goto('/')
   await registerAccount(page)
+  await waitForMapReady(page, '.map-card-viewport')
 
   const viewport = page.locator('.map-card-viewport')
   const box = await viewport.boundingBox()
@@ -80,25 +93,43 @@ test('dragging a marker in the detail sheet persists the new location', async ({
   await registerAccount(page)
   await saveGate(page, 'Oakwood Estates', '0451#')
 
-  // The gate now also appears in the "Nearby"/"Recently added" snapshots,
-  // whose rows share this same accessible name — .first() targets the main
-  // list card specifically, matching this test's original intent.
-  await page.getByRole('button', { name: 'Open Oakwood Estates' }).first().click()
-  const originalLocation = await page.locator('.sheet .location').textContent()
+  // The detail sheet no longer displays raw coordinates, so read the stored
+  // lat/lng directly — that's what "persists" actually means here.
+  const readStoredLocation = () =>
+    page.evaluate(() => {
+      const key = Object.keys(localStorage).find((k) => k.startsWith('sesame:gates:'))
+      if (!key) return null
+      const gates = JSON.parse(localStorage.getItem(key) ?? '[]') as {
+        name: string
+        lat: number | null
+        lng: number | null
+      }[]
+      const gate = gates.find((g) => g.name === 'Oakwood Estates')
+      return gate ? `${gate.lat},${gate.lng}` : null
+    })
 
+  const originalLocation = await readStoredLocation()
+
+  await page.getByRole('button', { name: 'Open Oakwood Estates' }).first().click()
   await page.getByRole('button', { name: 'Adjust location on map' }).click()
+  await waitForMapReady(page, '.map-card-viewport--small')
   const editorViewport = page.locator('.map-card-viewport--small')
   const box = await editorViewport.boundingBox()
   if (!box) throw new Error('location editor did not render')
 
-  // Drag the center marker a noticeable distance within the small viewport.
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  // Grab the marker itself rather than assuming it sits dead-centre — the
+  // pin is only 14px, so an approximate grab point misses it entirely.
+  const marker = page.locator('.map-card-viewport--small .gate-marker')
+  const markerBox = await marker.boundingBox()
+  if (!markerBox) throw new Error('draggable marker did not render')
+
+  await page.mouse.move(markerBox.x + markerBox.width / 2, markerBox.y + markerBox.height / 2)
   await page.mouse.down()
-  await page.mouse.move(box.x + box.width * 0.75, box.y + box.height * 0.25, { steps: 5 })
+  await page.mouse.move(box.x + box.width * 0.75, box.y + box.height * 0.25, { steps: 10 })
   await page.mouse.up()
 
   await page.reload()
-  await page.getByRole('button', { name: 'Open Oakwood Estates' }).first().click()
-  const updatedLocation = await page.locator('.sheet .location').textContent()
-  expect(updatedLocation).not.toBe(originalLocation)
+  await expect
+    .poll(readStoredLocation, { timeout: 10_000 })
+    .not.toBe(originalLocation)
 })
