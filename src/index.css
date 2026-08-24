@@ -12,28 +12,19 @@
   --bg: #f2efe6;
   --surface: #fff;
   --border: #e5e4e7;
-  --code-bg: #f4f3ec;
   --accent: #3e7c5a;
   --accent-100: #eef5f0;
-  --accent-200: #d7ead9;
   --accent-300: #b9dcc0;
   --accent-400: #8ac89b;
   --accent-600: #326a49;
   --accent-700: #24523a;
   --accent-800: #1a3d2b;
-  --accent-900: #11291d;
-  --accent-bg: var(--accent-100);
-  --accent-border: var(--accent-300);
   --warn: #a33;
-  --warn-bg: rgba(170, 51, 51, 0.1);
   --warn-border: rgba(170, 51, 51, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
   --radius: 0;
   --elev-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
   --elev-md: 0 4px 8px rgba(0, 0, 0, 0.1);
   --elev-lg: 0 12px 24px rgba(0, 0, 0, 0.14);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
   --sans: 'Archivo', system-ui, 'Segoe UI', Roboto, sans-serif;
   --heading: var(--sans);
@@ -61,28 +52,15 @@
     --bg: #16171d;
     --surface: #1c1d24;
     --border: #2e303a;
-    --code-bg: #1f2028;
     --accent: #6fbf8d;
     --accent-100: #16241c;
-    --accent-200: #1c2f24;
     --accent-300: #24402f;
     --accent-400: #2f5940;
     --accent-600: #8ecda3;
     --accent-700: #b9dcc0;
     --accent-800: #d7ead9;
-    --accent-900: #eef5f0;
-    --accent-bg: var(--accent-100);
-    --accent-border: var(--accent-400);
     --warn: #e08a8a;
-    --warn-bg: rgba(224, 138, 138, 0.15);
     --warn-border: rgba(224, 138, 138, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
   }
 }
 
