@@ -1,85 +1,62 @@
 # Sesame
 
-Mobile PWA for saving gate codes at gated communities and pulling them back up by GPS when you're
-back at the gate. Built this for personal shopper deliveries — the old workflow was
-screenshotting gate codes and then digging through the camera roll trying to find the right one
-at the call box. This is basically that, but it just knows where you are and shows you the code.
+Sesame is a mobile app for saving gate codes at gated communities, so you're not screenshotting
+codes and scrolling your camera roll trying to find the right one while you're stuck at a call
+box. Save a code once, standing at the gate, and next time you're back it just shows up. The
+app knows where you are and puts the right code at the top of the list.
 
-**Live app:** https://sesame-app-production-02e0.up.railway.app
+**Try it:** https://sesame-app-production-02e0.up.railway.app
 
-## How it actually works
+![Home screen showing the map and nearby gate list](screenshots/home-map.jpg)
 
-The big decision here: codes belong to the **gate**, not to a specific address. One gate, forty
-houses behind it, one code. Not forty addresses each with their own copy of the same code.
+## Getting started
 
-Why it matters:
+1. Open the link above on your phone and log in (or register if it's your first time).
+2. Add your first gate: give it a name, type in the code, and hit save. Standing at the gate
+   when you do this lets the app grab your location automatically, which is what makes it show
+   up later.
+3. That's it. Next time you're near that gate, it's the top result on your home screen.
 
-- When you're standing at the call box, the app just needs to find the nearest gate. If codes
-  were saved per-address instead, you'd be at the entrance but the saved record could be a mile
-  away at some house, so proximity search would just miss it.
-- Communities change their codes sometimes. If it's one gate row, that's one edit. If it's forty
-  address rows all holding a copy, someone always forgets to update one and now the app is
-  confidently showing a code that doesn't work anymore, which is worse than not showing anything.
+On iPhone, use Share → Add to Home Screen in Safari to install it like a real app. It'll work
+offline after that (except the map, see below).
 
-You can still search by address (plain text search over a separate `addresses` table) in case
-you want to double check before you get there. Typing an address gets Places autocomplete
-suggestions to help, but picking one just fills in the text box — no geocoding, nothing saved to
-that table but the address itself.
+## How to use it
 
-Also added a "this code isn't working" flag you can toggle from a gate's detail view. Shows up as
-a little warning badge on the card, the map pin, wherever. It clears itself automatically the
-next time you update that gate's code, so you don't have to remember to un-flag it.
+**Saving a gate.** Tap "+ Add gate," type the name and code, save. If you know the address you
+can type it in too (there's autocomplete to help) and optionally use that address's location to
+place the pin instead of your current GPS location, handy if you're adding a gate after the
+fact rather than standing at it.
 
-## Local-first, because signal at a gate is never good
+**Finding a code.** The list on the home screen is always sorted by distance, nearest first, and
+it's never filtered. Every gate you've saved shows up, because you might need a gate a mile away
+just as easily as the one you're standing at. You can also search by gate name or address if
+you'd rather type than scroll.
 
-Reads and writes hit `localStorage` first, and that's it from the UI's point of view — no waiting
-on a server round trip to see a code. Works fully offline, including adding new gates. The
-backend is just there for durability, syncing in the background whenever there's a connection.
+**A code stopped working?** Open the gate and check "Code not working." It shows up as a red
+warning wherever that gate appears (the list, the map, the gate's own page), so you know at a
+glance before you drive over there. The next time you update the code, the flag clears itself
+automatically.
 
-Since gates can get created offline, IDs are UUIDs generated on the client instead of waiting on
-the server to hand one out. If two devices edit the same gate, last write wins based on
-`updated_at`. Deletes are soft (a `deleted_at` timestamp) since a hard delete would just look like
-a row the other device hasn't synced yet and would come back from the dead.
+![Gate detail view with the code flagged as not working](screenshots/not-working-flag.jpg)
 
-## Stack
+**The map.** Tap into the map view to see all your gates as pins. Tap a pin to preview it,
+long-press anywhere to drop a new gate at that spot, or drag an existing pin if it's a little off.
+The map needs an internet connection to work. Everything else in the app doesn't.
 
-- **Frontend:** React + TypeScript + Vite, set up as an installable PWA
-- **Backend:** Node + Fastify, plain REST, TypeScript
-- **Database:** Postgres, raw SQL through `pg`, no ORM, migrations by hand
-- **Auth:** rolled my own — argon2id, server-side sessions, httpOnly cookies
-- **Maps:** Google Maps JS API + Places API, more on that below
-- **Testing:** Vitest + React Testing Library for unit/component stuff, Testcontainers for
-  integration tests against a real Postgres, Playwright for E2E (including faking GPS location so
-  I can actually test the proximity sorting works)
-- **CI:** GitHub Actions, runs on every push
-- **Styling:** plain CSS, no Tailwind or component library, one self-hosted font
+**One gate, many addresses.** If a community has forty houses behind one gate, you only need to
+save the code once. Add each address under that same gate instead of re-saving the code forty
+times. That way, when the community changes the code, you only have to update it in one place.
 
-Distance sorting is just a haversine formula I wrote out by hand, maybe 30 lines. Didn't need a
-library for that.
+![Gate list showing distance and a saved code](screenshots/gate-list.jpg)
 
-Frontend and backend are served from the same origin (Fastify serves the built React app too),
-mainly so cookies stay first-party and I don't have to deal with CORS or Safari blocking
-cross-site cookies on iOS.
+**Offline.** Everything works without a signal except the map. Codes you've already saved are
+always there, and you can add new gates offline too. They'll sync up next time you're connected.
 
-## Maps
+## For developers
 
-The map view (gate pins, tap a pin to preview, long-press to drop a new gate, drag a pin to fix
-its location) and the address autocomplete both need a Google Maps API key with the Places API
-turned on, plus a GCP project with billing attached (should stay in the free tier for personal
-use, but Google still wants a card on file). Key needs to be referrer-restricted to your domain
-and `localhost`. Check `.env.example` for the actual variable names.
-
-This is really the one exception to keeping things dependency-free everywhere else in the app.
-Google's terms don't let you cache map tiles for offline use, so the map is also the one screen
-that just doesn't work without a connection — shows a "you need internet for this" message
-instead of trying to fake it.
-
-There's a few ways to set a gate's pin location: a GPS fix when you save it, long-pressing on the
-map, dragging an existing pin, or now also a checkbox to just use the location of an address you
-picked from autocomplete. All of these just set the gate's own lat/lng though — none of it gets
-saved onto the address record, which stays plain text no matter what.
-
-## Running it locally
+React + TypeScript + Vite frontend (installable PWA), Node + Fastify backend, Postgres with raw
+SQL (no ORM), argon2id auth with server-side sessions. The map uses the Google Maps JS API and
+needs an API key (see `.env.example`).
 
 ```bash
 npm install
@@ -98,8 +75,8 @@ npm run test:integration # spins up Postgres in a container
 npm run test:e2e         # Playwright, also spins up its own throwaway Postgres
 ```
 
-## Things this is not trying to do
+## Things this doesn't do
 
-No geocoding random addresses, no turn-by-turn directions, the map's just for looking at and
+No geocoding random addresses, no turn-by-turn directions. The map's just for looking at and
 placing pins. No sharing codes with other users and no public database of gate codes floating
-around — this is just for one person's own deliveries, nothing crowdsourced.
+around. This is just for one person's own deliveries, nothing crowdsourced.
