@@ -1,90 +1,105 @@
 # Sesame
 
-A mobile-first PWA for storing gated-community access codes and retrieving them by GPS
-proximity. Built to replace a personal shopper's actual workflow: screenshotting gate codes and
-scrolling through a photo library while stuck at a call box.
+Mobile PWA for saving gate codes at gated communities and pulling them back up by GPS when you're
+back at the gate. Built this for personal shopper deliveries — the old workflow was
+screenshotting gate codes and then digging through the camera roll trying to find the right one
+at the call box. This is basically that, but it just knows where you are and shows you the code.
 
 **Live app:** https://sesame-app-production-02e0.up.railway.app
 
-## The core idea
+## How it actually works
 
-Codes are pinned to **gates**, not to delivery addresses. A gate opens for many addresses, and
-communities rotate codes on the gate, not per house — so a code is stored once, on the gate, and
-every address behind it inherits it. This is deliberate:
+The big decision here: codes belong to the **gate**, not to a specific address. One gate, forty
+houses behind it, one code. Not forty addresses each with their own copy of the same code.
 
-- **Retrieval works because of it.** The moment of need is standing at a call box. The gate's
-  saved coordinates are close to the phone's current position, so it's always the top result of
-  a GPS-proximity search — not buried under a mile of address rows.
-- **Updates work because of it.** One gate with forty addresses behind it is one update when a
-  community rotates its code, instead of forty rows each carrying a stale duplicate.
+Why it matters:
 
-Delivery addresses are still searchable — as plain text over a separate `addresses` table — for
-checking a code before you arrive. That lookup itself needs no geocoding; the address field does
-offer Places autocomplete as a typing aid, but picking a suggestion only fills in its text — no
-address ever gets a lat/lng or a Place ID stored.
+- When you're standing at the call box, the app just needs to find the nearest gate. If codes
+  were saved per-address instead, you'd be at the entrance but the saved record could be a mile
+  away at some house, so proximity search would just miss it.
+- Communities change their codes sometimes. If it's one gate row, that's one edit. If it's forty
+  address rows all holding a copy, someone always forgets to update one and now the app is
+  confidently showing a code that doesn't work anymore, which is worse than not showing anything.
 
-## Architecture
+You can still search by address (plain text search over a separate `addresses` table) in case
+you want to double check before you get there. Typing an address gets Places autocomplete
+suggestions to help, but picking one just fills in the text box — no geocoding, nothing saved to
+that table but the address itself.
 
-**Local-first.** All reads and writes hit `localStorage` first and are synchronous from the UI's
-perspective; the app is fully usable offline, including adding new gates. The server is a
-durability backstop, not the read path — sync pushes/pulls in the background and never blocks
-the UI. IDs are client-generated UUIDs so offline-created records have stable identities before
-they ever reach the server. Conflicts resolve last-write-wins on `updated_at`; deletes are soft
-tombstones so they propagate correctly through sync.
+Also added a "this code isn't working" flag you can toggle from a gate's detail view. Shows up as
+a little warning badge on the card, the map pin, wherever. It clears itself automatically the
+next time you update that gate's code, so you don't have to remember to un-flag it.
 
-**Single origin.** Fastify serves both the REST API and the built React app from one origin,
-which keeps session cookies first-party and sidesteps CORS and Safari's cross-site cookie
-restrictions on iOS entirely.
+## Local-first, because signal at a gate is never good
 
-**No ORM.** Raw SQL via `pg`, and a hand-written ~30-line haversine implementation for distance
-and proximity sorting — the one exception is the map view itself (see Maps below), which uses
-the real thing rather than reimplementing map rendering.
+Reads and writes hit `localStorage` first, and that's it from the UI's point of view — no waiting
+on a server round trip to see a code. Works fully offline, including adding new gates. The
+backend is just there for durability, syncing in the background whenever there's a connection.
+
+Since gates can get created offline, IDs are UUIDs generated on the client instead of waiting on
+the server to hand one out. If two devices edit the same gate, last write wins based on
+`updated_at`. Deletes are soft (a `deleted_at` timestamp) since a hard delete would just look like
+a row the other device hasn't synced yet and would come back from the dead.
 
 ## Stack
 
-- **Frontend:** React + TypeScript + Vite, installable as a PWA (`vite-plugin-pwa`)
-- **Backend:** Node + Fastify, REST, TypeScript
-- **Database:** PostgreSQL, raw SQL via `pg`, hand-written migrations
-- **Auth:** argon2id password hashing, server-side sessions, httpOnly cookies
-- **Maps:** Google Maps JavaScript API + Places API (`@vis.gl/react-google-maps`) — see Maps below
-- **Testing:** Vitest + React Testing Library (unit/component), Testcontainers (integration
-  against real Postgres), Playwright (E2E — including geolocation mocking to test proximity
-  sorting and offline behavior in a real browser)
-- **CI:** GitHub Actions — typecheck, lint, unit/component, integration, and E2E on every push
-- **Styling:** plain CSS, no framework, self-hosted Archivo font
+- **Frontend:** React + TypeScript + Vite, set up as an installable PWA
+- **Backend:** Node + Fastify, plain REST, TypeScript
+- **Database:** Postgres, raw SQL through `pg`, no ORM, migrations by hand
+- **Auth:** rolled my own — argon2id, server-side sessions, httpOnly cookies
+- **Maps:** Google Maps JS API + Places API, more on that below
+- **Testing:** Vitest + React Testing Library for unit/component stuff, Testcontainers for
+  integration tests against a real Postgres, Playwright for E2E (including faking GPS location so
+  I can actually test the proximity sorting works)
+- **CI:** GitHub Actions, runs on every push
+- **Styling:** plain CSS, no Tailwind or component library, one self-hosted font
+
+Distance sorting is just a haversine formula I wrote out by hand, maybe 30 lines. Didn't need a
+library for that.
+
+Frontend and backend are served from the same origin (Fastify serves the built React app too),
+mainly so cookies stay first-party and I don't have to deal with CORS or Safari blocking
+cross-site cookies on iOS.
 
 ## Maps
 
-The one map view (gate pins, tap-to-preview, long-press to add a gate, drag to correct a pin)
-and the add-gate form's address autocomplete both need a Google Maps JS API key with the Places
-API enabled, a GCP billing account attached, and the key referrer-restricted to your deployed
-origin plus `localhost`. See `.env.example` for the exact variables. This is a deliberate,
-scoped exception to the rest of the app's zero-dependency approach — Google's Maps JS API terms
-also forbid offline tile caching, so the map (and only the map) doesn't work with no signal;
-everything else in the app is fully local-first regardless of whether a key is configured.
+The map view (gate pins, tap a pin to preview, long-press to drop a new gate, drag a pin to fix
+its location) and the address autocomplete both need a Google Maps API key with the Places API
+turned on, plus a GCP project with billing attached (should stay in the free tier for personal
+use, but Google still wants a card on file). Key needs to be referrer-restricted to your domain
+and `localhost`. Check `.env.example` for the actual variable names.
 
-## Running locally
+This is really the one exception to keeping things dependency-free everywhere else in the app.
+Google's terms don't let you cache map tiles for offline use, so the map is also the one screen
+that just doesn't work without a connection — shows a "you need internet for this" message
+instead of trying to fake it.
+
+There's a few ways to set a gate's pin location: a GPS fix when you save it, long-pressing on the
+map, dragging an existing pin, or now also a checkbox to just use the location of an address you
+picked from autocomplete. All of these just set the gate's own lat/lng though — none of it gets
+saved onto the address record, which stays plain text no matter what.
+
+## Running it locally
 
 ```bash
 npm install
 
-# frontend, proxying /api to the backend below — copy .env.example to .env
-# first; the map card and address autocomplete are blank without a Maps key,
-# but everything else works fine unconfigured
+# copy .env.example to .env first if you want maps/autocomplete to work locally,
+# otherwise it'll just render without them, everything else still works fine
 npm run dev
 
-# backend — needs DATABASE_URL pointed at a local Postgres
+# needs DATABASE_URL pointing at a local Postgres
 npm run dev:server
 ```
 
 ```bash
-npm test                 # unit + component (Vitest)
-npm run test:integration # spins up Postgres via Testcontainers
-npm run test:e2e         # Playwright, provisions a throwaway Postgres via Docker
+npm test                 # unit + component tests
+npm run test:integration # spins up Postgres in a container
+npm run test:e2e         # Playwright, also spins up its own throwaway Postgres
 ```
 
-## Non-goals
+## Things this is not trying to do
 
-Geocoding arbitrary addresses, navigation, or turn-by-turn routing — the map is for browsing and
-correcting gate pins, not directions. No sharing codes between users, and no crowdsourced
-database of gate codes — this is a private tool for one person's own deliveries.
+No geocoding random addresses, no turn-by-turn directions, the map's just for looking at and
+placing pins. No sharing codes with other users and no public database of gate codes floating
+around — this is just for one person's own deliveries, nothing crowdsourced.
