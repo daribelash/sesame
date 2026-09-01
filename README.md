@@ -52,7 +52,7 @@ times. That way, when the community changes the code, you only have to update it
 **Offline.** Everything works without a signal except the map. Codes you've already saved are
 always there, and you can add new gates offline too. They'll sync up next time you're connected.
 
-## For developers
+## Running it locally
 
 React + TypeScript + Vite frontend (installable PWA), Node + Fastify backend, Postgres with raw
 SQL (no ORM), argon2id auth with server-side sessions. The map uses the Google Maps JS API and
@@ -74,9 +74,3 @@ npm test                 # unit + component tests
 npm run test:integration # spins up Postgres in a container
 npm run test:e2e         # Playwright, also spins up its own throwaway Postgres
 ```
-
-## Things this doesn't do
-
-No geocoding random addresses, no turn-by-turn directions. The map's just for looking at and
-placing pins. No sharing codes with other users and no public database of gate codes floating
-around. This is just for one person's own deliveries, nothing crowdsourced.
